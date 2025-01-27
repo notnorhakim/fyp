@@ -1,0 +1,3 @@
+after filtering the tasks, when tryiong to get it complete, it does not highlight and show, but when gg back to the all categories, all is shown the highlights and percentages. 
+
+i think the assigning of highlights to eacg specific task is messed up 
