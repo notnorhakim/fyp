@@ -1,55 +1,82 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Button } from 'react-native';
 import * as Progress from 'react-native-progress';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons'; // Ensure expo/vector-icons is installed
 
+
 export default function HomeScreen({ navigation }) {
   const [tasks, setTasks] = useState([]);
-  console.log("Initial tasks:", tasks);
   const [sortOption, setSortOption] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [menuVisible, setMenuVisible] = useState(false); // Toggle for menu visibility
   const categories = Array.from(new Set(tasks.map((task) => task.category))); // Extract unique categories
 
+  useEffect(() => {
+    if (sortOption === 'progress') {
+      setTasks(prevTasks => [...prevTasks].sort((a, b) => b.progress - a.progress));
+    }
+  }, [sortOption]); // Only runs when sortOption changes
+  
   const addTask = (task) => {
     setTasks([...tasks, task]);
   };
 
+  //test
+
+
   const toggleSubtask = (taskIndex, subtaskIndex) => {
-    // Find the corresponding task in the original tasks array
-    const taskToModify = filteredTasks[taskIndex];
   
-    // Locate the task's index in the original tasks array
-    const originalTaskIndex = tasks.findIndex((task) => task === taskToModify);
+    setTasks(prevTasks => {
+      const updatedTasks = prevTasks.map(task => ({
+        ...task,
+        subtasks: task.subtasks.map((subtask, index) =>
+          index === subtaskIndex && task === prevTasks[taskIndex]
+            ? { ...subtask, completed: !subtask.completed }
+            : subtask
+        )
+      }));
   
-    if (originalTaskIndex !== -1) {
-      // Make a copy of tasks
-      const updatedTasks = [...tasks];
+      // Recalculate progress for each task
+      updatedTasks.forEach(task => {
+        const completedSubtasks = task.subtasks.filter(sub => sub.completed).length;
+        task.progress = completedSubtasks / (task.subtasks.length || 1);
+      });
   
-      // Toggle the subtask completion status
-      const subtask = updatedTasks[originalTaskIndex].subtasks[subtaskIndex];
-      subtask.completed = !subtask.completed;
+      // Apply sorting only if sorting by progress
+      if (sortOption === 'progress') {
+        return [...updatedTasks].sort((a, b) => b.progress - a.progress);
+      }
   
-      // Update the state
-      setTasks(updatedTasks);
-    }
+      return updatedTasks;
+    });
   };
   
 
+
   const sortTasks = (option) => {
     let sortedTasks = [...tasks];
+  
     if (option === 'priority') {
       const priorityOrder = { High: 1, Medium: 2, Low: 3 };
       sortedTasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
     } else if (option === 'dueDate') {
       sortedTasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
     } else if (option === 'progress') {
+      // Compute progress dynamically and sort based on it
+      sortedTasks = sortedTasks.map(task => {
+        const completedSubtasks = task.subtasks.filter(sub => sub.completed).length;
+        const progress = completedSubtasks / task.subtasks.length || 0;
+        return { ...task, progress }; // Add progress temporarily for sorting
+      });
+  
       sortedTasks.sort((a, b) => b.progress - a.progress);
     }
+  
     setTasks(sortedTasks);
     setSortOption(option);
   };
+  
 
   const filteredTasks = filterCategory
     ? tasks.filter((task) => task.category === filterCategory)
