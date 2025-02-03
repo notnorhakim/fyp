@@ -3,8 +3,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Button
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 
-export default function AddTaskScreen({ navigation, route }) {
-  const { addTask } = route.params;
+export default function AddTaskScreen({ navigation, addTask }) {
   const [title, setTitle] = useState('');
   const [subtaskName, setSubtaskName] = useState('');
   const [subtasks, setSubtasks] = useState([]);

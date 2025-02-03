@@ -1,95 +1,62 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Button } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import * as Progress from 'react-native-progress';
 import { Picker } from '@react-native-picker/picker';
-import { Ionicons } from '@expo/vector-icons'; // Ensure expo/vector-icons is installed
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native'; 
 
+// Import task functions from utils
+import { toggleSubtask, sortTasks, filterTasksByCategory } from '../utils/taskUtils';
 
-export default function HomeScreen({ navigation }) {
-  const [tasks, setTasks] = useState([]);
+export default function HomeScreen({ tasks = [], setTasks }) {
   const [sortOption, setSortOption] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const [menuVisible, setMenuVisible] = useState(false); // Toggle for menu visibility
-  const categories = Array.from(new Set(tasks.map((task) => task.category))); // Extract unique categories
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [viewMode, setViewMode] = useState('detailed'); // "detailed" or "simplified"
+  const [expandedTasks, setExpandedTasks] = useState({}); // ✅ Track expanded tasks
+  const navigation = useNavigation();
 
   useEffect(() => {
     if (sortOption === 'progress') {
-      setTasks(prevTasks => [...prevTasks].sort((a, b) => b.progress - a.progress));
+      sortTasks(tasks, setTasks, 'progress');
     }
-  }, [sortOption]); // Only runs when sortOption changes
-  
-  const addTask = (task) => {
-    setTasks([...tasks, task]);
+  }, [sortOption]);
+
+  console.log('before categories');
+  const categories = Array.from(new Set(tasks.map((task) => task.category)));
+  console.log(categories);
+  const filteredTasks = filterTasksByCategory(tasks, filterCategory);
+
+  const toggleTaskExpansion = (index) => {
+    setExpandedTasks((prev) => ({
+      ...prev,
+      [index]: !prev[index], // ✅ Toggle expansion state only for the tapped task
+    }));
   };
 
-  //test
-
-
-  const toggleSubtask = (taskIndex, subtaskIndex) => {
-  
-    setTasks(prevTasks => {
-      const updatedTasks = prevTasks.map(task => ({
-        ...task,
-        subtasks: task.subtasks.map((subtask, index) =>
-          index === subtaskIndex && task === prevTasks[taskIndex]
-            ? { ...subtask, completed: !subtask.completed }
-            : subtask
-        )
-      }));
-  
-      // Recalculate progress for each task
-      updatedTasks.forEach(task => {
-        const completedSubtasks = task.subtasks.filter(sub => sub.completed).length;
-        task.progress = completedSubtasks / (task.subtasks.length || 1);
-      });
-  
-      // Apply sorting only if sorting by progress
-      if (sortOption === 'progress') {
-        return [...updatedTasks].sort((a, b) => b.progress - a.progress);
-      }
-  
-      return updatedTasks;
-    });
+  const updateTask = (updatedTask) => {
+    setTasks((prevTasks) =>
+      prevTasks.map((task) => (task.title === updatedTask.title ? updatedTask : task))
+    );
   };
-  
 
-
-  const sortTasks = (option) => {
-    let sortedTasks = [...tasks];
   
-    if (option === 'priority') {
-      const priorityOrder = { High: 1, Medium: 2, Low: 3 };
-      sortedTasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-    } else if (option === 'dueDate') {
-      sortedTasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-    } else if (option === 'progress') {
-      // Compute progress dynamically and sort based on it
-      sortedTasks = sortedTasks.map(task => {
-        const completedSubtasks = task.subtasks.filter(sub => sub.completed).length;
-        const progress = completedSubtasks / task.subtasks.length || 0;
-        return { ...task, progress }; // Add progress temporarily for sorting
-      });
-  
-      sortedTasks.sort((a, b) => b.progress - a.progress);
-    }
-  
-    setTasks(sortedTasks);
-    setSortOption(option);
-  };
-  
-
-  const filteredTasks = filterCategory
-    ? tasks.filter((task) => task.category === filterCategory)
-    : tasks;
-
   return (
     <View style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Tasks</Text>
-        <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
-          <Ionicons name="filter" size={28} color="black" />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          {/* View Toggle Button */}
+          <TouchableOpacity onPress={() => setViewMode(viewMode === 'detailed' ? 'simplified' : 'detailed')}>
+            <Ionicons name={viewMode === 'detailed' ? 'list' : 'eye'} size={28} color="black" />
+          </TouchableOpacity>
+
+          {/* Filter Toggle Button */}
+          <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
+            <Ionicons name="filter" size={28} color="black" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Sort & Filter Menu */}
@@ -99,8 +66,9 @@ export default function HomeScreen({ navigation }) {
           <Picker
             selectedValue={sortOption}
             onValueChange={(value) => {
-              sortTasks(value);
-              setMenuVisible(false); // Close menu after selection
+              sortTasks(tasks, setTasks, value);
+              setSortOption(value);
+              setMenuVisible(false);
             }}
             style={styles.picker}
           >
@@ -115,7 +83,7 @@ export default function HomeScreen({ navigation }) {
             selectedValue={filterCategory}
             onValueChange={(value) => {
               setFilterCategory(value);
-              setMenuVisible(false); // Close menu after selection
+              setMenuVisible(false);
             }}
             style={styles.picker}
           >
@@ -130,50 +98,73 @@ export default function HomeScreen({ navigation }) {
       {/* Task List */}
       <FlatList
         data={filteredTasks}
-        
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item, index }) => {
           const completedSubtasks = item.subtasks.filter((sub) => sub.completed).length;
           const progress = completedSubtasks / item.subtasks.length;
           const percentage = Math.round(progress * 100);
+          const isExpanded = expandedTasks[index] || viewMode === 'detailed'; // ✅ Keep expanded only for the clicked task
 
           return (
-            <View style={styles.taskCard}>
-              <Text style={styles.taskTitle}>{item.title}</Text>
-              <Text style={styles.details}>Due Date: {item.dueDate}</Text>
-              <Text style={styles.details}>Priority: {item.priority}</Text>
-              <Text style={styles.details}>Category: {item.category}</Text>
-              <View style={styles.progressContainer}>
-                <Progress.Bar progress={progress} width={200} />
-                <Text style={styles.percentage}>{percentage}%</Text>
+            <TouchableOpacity onPress={() => toggleTaskExpansion(index)} activeOpacity={0.7}>
+              <View style={[styles.taskCard, item.completed && styles.completedTask]}>
+                {/* Task Title & Edit Button */}
+                <View style={styles.taskHeader}>
+                  <Text style={styles.taskTitle}>{item.title}</Text>
+                  <TouchableOpacity
+                      onPress={() => {
+                        navigation.navigate('Edit Task', {
+                          taskToEdit: item,
+                          updateTask: (updatedTask) => {
+                            // Update the task in the global state
+                            setTasks((prevTasks) =>
+                              prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
+                            );
+                          },
+                          categories: categories });
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={24} color="black" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* ✅ Expand task details only when clicked */}
+                {isExpanded && (
+                  <>
+                    <Text style={styles.details}>Due Date: {item.dueDate}</Text>
+                    <Text style={styles.details}>Priority: {item.priority}</Text>
+                    <Text style={styles.details}>Category: {item.category}</Text>
+
+                    {item.completed ? <Text style={styles.completedLabel}>✔ Completed</Text> : null}
+
+                    <View style={styles.progressContainer}>
+                      <Progress.Bar progress={progress} width={200} />
+                      <Text style={styles.percentage}>{percentage}%</Text>
+                    </View>
+
+                    {item.subtasks.map((sub, subIndex) => (
+                      <TouchableOpacity
+                        key={subIndex}
+                        onPress={(e) => {
+                          e.stopPropagation(); // ✅ Prevents expanding all tasks
+                          toggleSubtask(tasks, setTasks, setExpandedTasks, index, subIndex, sortOption);
+                        }}
+                        style={[styles.subtask, sub.completed ? styles.completedSubtask : null]}
+                      >
+                        <Text>{sub.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
               </View>
-              {item.subtasks.map((sub, subIndex) => (
-                <TouchableOpacity
-                  key={subIndex}
-                  onPress={() => toggleSubtask(index, subIndex)}
-                  style={[
-                    styles.subtask,
-                    sub.completed ? styles.completedSubtask : null,
-                  ]}
-                >
-                  <Text>{sub.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            </TouchableOpacity>
           );
         }}
         ListEmptyComponent={<Text>No tasks yet. Add one!</Text>}
-  
-      />
-      
-      <Button
-        title="Add Task"
-        onPress={() => navigation.navigate('Add Task', { addTask })}
       />
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
@@ -183,7 +174,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  headerTitle: { fontSize: 24, fontWeight: 'bold' },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   menuContainer: {
     padding: 8,
     backgroundColor: '#fff',
@@ -192,8 +186,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 16,
   },
-  menuLabel: { fontSize: 16, fontWeight: 'bold', marginTop: 8 },
-  picker: { height: 50, width: '100%' },
   taskCard: {
     backgroundColor: '#fff',
     padding: 16,
@@ -201,8 +193,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     elevation: 2,
   },
+  taskHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  completedTask: {
+    backgroundColor: '#d4edda',
+    borderColor: '#28a745',
+  },
   taskTitle: { fontSize: 18, fontWeight: 'bold' },
   details: { fontSize: 14, marginTop: 4 },
+  completedLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#28a745',
+    marginTop: 8,
+  },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
