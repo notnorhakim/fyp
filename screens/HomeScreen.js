@@ -15,6 +15,8 @@ export default function HomeScreen({ tasks = [], setTasks }) {
   const [viewMode, setViewMode] = useState('detailed'); // "detailed" or "simplified"
   const [expandedTasks, setExpandedTasks] = useState({}); // ✅ Track expanded tasks
   const navigation = useNavigation();
+  const [taskFilter, setTaskFilter] = useState('incomplete'); // ✅ "all", "completed", or "incomplete"
+
 
   useEffect(() => {
     if (sortOption === 'progress') {
@@ -22,10 +24,17 @@ export default function HomeScreen({ tasks = [], setTasks }) {
     }
   }, [sortOption]);
 
-  console.log('before categories');
+
   const categories = Array.from(new Set(tasks.map((task) => task.category)));
-  console.log(categories);
-  const filteredTasks = filterTasksByCategory(tasks, filterCategory);
+
+  const filteredTasks = tasks
+  .filter((task) => (filterCategory ? task.category === filterCategory : true)) // ✅ Filter by category
+  .filter((task) => {
+    if (taskFilter === 'completed') return task.completed; // ✅ Show only completed tasks
+    if (taskFilter === 'incomplete') return !task.completed; // ✅ Show only incomplete tasks
+    return true; // ✅ Show all tasks
+  });
+
 
   const toggleTaskExpansion = (index) => {
     setExpandedTasks((prev) => ({
@@ -40,12 +49,25 @@ export default function HomeScreen({ tasks = [], setTasks }) {
     );
   };
 
+  const getFilterLabel = () => {
+    if (taskFilter === 'completed') return 'Completed';
+    if (taskFilter === 'incomplete') return 'Incomplete';
+    return 'All Tasks';
+  };
+  
+  const getSortLabel = () => {
+    if (sortOption === 'priority') return 'Sorted by Priority';
+    if (sortOption === 'dueDate') return 'Sorted by Due Date';
+    if (sortOption === 'progress') return 'Sorted by Progress';
+    return 'Unsorted';
+  };
+  
   
   return (
     <View style={styles.container}>
       {/* Header Section */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Tasks</Text>
+      <Text style={styles.headerTitle}>Showing: {getFilterLabel()} - {getSortLabel()} - {filterCategory ? filterCategory : "All Categories"}</Text>
         <View style={styles.headerButtons}>
           {/* View Toggle Button */}
           <TouchableOpacity onPress={() => setViewMode(viewMode === 'detailed' ? 'simplified' : 'detailed')}>
@@ -91,6 +113,17 @@ export default function HomeScreen({ tasks = [], setTasks }) {
             {categories.map((cat, index) => (
               <Picker.Item key={index} label={cat} value={cat} />
             ))}
+          </Picker>
+
+          <Text style={styles.filterLabel}>Filter by Completion:</Text>
+          <Picker
+            selectedValue={taskFilter}
+            onValueChange={(value) => setTaskFilter(value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Show All" value="all" />
+            <Picker.Item label="Completed" value="completed" />
+            <Picker.Item label="Incomplete" value="incomplete" />
           </Picker>
         </View>
       )}
@@ -147,7 +180,8 @@ export default function HomeScreen({ tasks = [], setTasks }) {
                         key={subIndex}
                         onPress={(e) => {
                           e.stopPropagation(); // ✅ Prevents expanding all tasks
-                          toggleSubtask(tasks, setTasks, setExpandedTasks, index, subIndex, sortOption);
+                          toggleSubtask(tasks, setTasks, setExpandedTasks, item.id, subIndex, sortOption);
+
                         }}
                         style={[styles.subtask, sub.completed ? styles.completedSubtask : null]}
                       >
@@ -160,6 +194,8 @@ export default function HomeScreen({ tasks = [], setTasks }) {
             </TouchableOpacity>
           );
         }}
+        contentContainerStyle={{ paddingBottom: 80 }} // ✅ Adds extra space at the bottom
+        keyboardShouldPersistTaps="handled" // ✅ Allows tapping outside to dismiss keyboard
         ListEmptyComponent={<Text>No tasks yet. Add one!</Text>}
       />
     </View>

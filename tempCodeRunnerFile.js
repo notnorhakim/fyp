@@ -20,21 +20,14 @@ export default function App() {
   const [tasks, setTasks] = useState([]); // ✅ Store tasks globally
 
   function addTask(task) {
-    setTasks((prevTasks) => [...prevTasks, { ...task, id: Date.now().toString() }]);
+    setTasks((prevTasks) => [...prevTasks, task]); // ✅ Ensure state updates persist
   }
-  
+
   function updateTask(updatedTask) {
     setTasks((prevTasks) =>
       prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
     ); // ✅ Update the edited task
   }
-
-  function deleteTask(taskId) {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
-    console.log('Task deleted successfully.');
-    console.log(tasks);
-  }
-  
 
   function BottomTabs() {
     return (
@@ -86,9 +79,8 @@ export default function App() {
           {(props) => <AddTaskScreen {...props} addTask={addTask} />}
         </Stack.Screen>
         <Stack.Screen name="Edit Task">
-         {(props) => <EditTaskScreen {...props} updateTask={updateTask} deleteTask={deleteTask} />}
+          {(props) => <EditTaskScreen {...props} updateTask={updateTask} />}
         </Stack.Screen>
-
       </Stack.Navigator>
     </NavigationContainer>
   );

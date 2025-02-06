@@ -1,34 +1,35 @@
-export const toggleSubtask = (tasks, setTasks, setExpandedTasks, taskIndex, subtaskIndex, sortOption) => {
-    setTasks((prevTasks) => {
-      const updatedTasks = prevTasks.map((task, index) => {
-        if (index !== taskIndex) return task;
-  
-        const updatedSubtasks = task.subtasks.map((subtask, subIndex) =>
-          subIndex === subtaskIndex ? { ...subtask, completed: !subtask.completed } : subtask
-        );
-  
-        const completedSubtasks = updatedSubtasks.filter((sub) => sub.completed).length;
-        const totalSubtasks = updatedSubtasks.length || 1;
-        const progress = completedSubtasks / totalSubtasks;
-  
-        return {
-          ...task,
-          subtasks: updatedSubtasks,
-          progress,
-          completed: progress === 1, // ✅ Mark task as completed when progress reaches 100%
-        };
-      });
-  
-      if (sortOption === 'progress') {
-        updatedTasks.sort((a, b) => b.progress - a.progress);
-      }
-  
-      // ✅ Preserve expandedTasks without affecting other tasks
-      setExpandedTasks((prevExpanded) => ({ ...prevExpanded }));
-  
-      return updatedTasks;
+export const toggleSubtask = (tasks, setTasks, setExpandedTasks, taskId, subtaskIndex, sortOption) => {
+  setTasks((prevTasks) => {
+    const updatedTasks = prevTasks.map((task) => {
+      if (task.id !== taskId) return task; // ✅ Ensure only the correct task is modified
+
+      const updatedSubtasks = task.subtasks.map((subtask, subIndex) =>
+        subIndex === subtaskIndex ? { ...subtask, completed: !subtask.completed } : subtask
+      );
+
+      const completedSubtasks = updatedSubtasks.filter((sub) => sub.completed).length;
+      const totalSubtasks = updatedSubtasks.length || 1;
+      const progress = completedSubtasks / totalSubtasks;
+
+      return {
+        ...task,
+        subtasks: updatedSubtasks,
+        progress,
+        completed: progress === 1, // ✅ Mark task as completed only if all subtasks are done
+      };
     });
-  };
+
+    if (sortOption === 'progress') {
+      updatedTasks.sort((a, b) => b.progress - a.progress);
+    }
+
+    // ✅ Preserve expandedTasks without affecting other tasks
+    setExpandedTasks((prevExpanded) => ({ ...prevExpanded }));
+
+    return updatedTasks;
+  });
+};
+
   
   
   export const sortTasks = (tasks, setTasks, option) => {

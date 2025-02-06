@@ -3,7 +3,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Button
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 
-export default function EditTaskScreen({ navigation, route }) {
+export default function EditTaskScreen({ navigation, route, deleteTask}) {
   const { taskToEdit, updateTask, categories } = route.params || {};
 
   if (!taskToEdit) {
@@ -34,6 +34,21 @@ export default function EditTaskScreen({ navigation, route }) {
       )
     );
   };
+
+  const handleDeleteTask = () => {
+    if (!deleteTask) {
+      alert('Error: deleteTask function not found.');
+      return;
+    }
+  
+    if (taskToEdit) {
+      deleteTask(taskToEdit.id); // ✅ Call the function correctly
+      alert('Task deleted successfully.');
+      navigation.goBack(); // ✅ Navigate back to HomeScreen
+    }
+  };
+  
+  
 
   const handleUpdateTask = () => {
     if (title.trim() && subtasks.length > 0 && category.trim() !== '') {
@@ -120,6 +135,10 @@ export default function EditTaskScreen({ navigation, route }) {
       <View style={styles.addButtonContainer}>
         <Button title="Update Task" onPress={handleUpdateTask} />
       </View>
+      <View style={styles.deleteButtonContainer}>
+        <Button title="Delete Task" onPress={handleDeleteTask} color="red" />
+      </View>
+
     </ScrollView>
   );
 }
@@ -180,4 +199,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 32,
   },
+  deleteButtonContainer: {
+    marginTop: 16,
+    marginBottom: 32,
+  }
+  
 });

@@ -10,18 +10,21 @@ export default function AddTaskScreen({ navigation, addTask }) {
   const [dueDate, setDueDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [priority, setPriority] = useState('Medium');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState('Work');
   const [categories, setCategories] = useState(['Work', 'Personal']); // Initial categories
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false); // Toggle for new category input
   const [newCategory, setNewCategory] = useState('');
   const [showPlaceholder, setShowPlaceholder] = useState(true); // Control placeholder visibility
 
   const addSubtask = () => {
-    if (subtaskName.trim() !== '') {
-      setSubtasks([...subtasks, { name: subtaskName, completed: false }]);
+    if (subtaskName.trim() !== '' && !subtasks.some(sub => sub.name === subtaskName.trim())) {
+      setSubtasks([...subtasks, { name: subtaskName.trim(), completed: false }]);
       setSubtaskName('');
+    } else {
+      alert('Subtask is empty or already exists.');
     }
   };
+  
 
   const handleAddCategory = () => {
     if (newCategory.trim() !== '' && !categories.includes(newCategory.trim())) {
@@ -36,12 +39,23 @@ export default function AddTaskScreen({ navigation, addTask }) {
 
   const handleAddTask = () => {
     if (title.trim() && subtasks.length > 0 && category.trim() !== '') {
-      addTask({ title, subtasks, dueDate: dueDate.toDateString(), priority, category });
+      const newTask = {
+        id: Date.now().toString(),
+        title,
+        subtasks,
+        dueDate: dueDate.toDateString(),
+        priority,
+        category,
+      };
+      addTask(newTask);
+      alert('Task added successfully!');
       navigation.goBack();
     } else {
       alert('Please fill in all fields and add at least one subtask.');
     }
   };
+  
+  
 
   return (
     <ScrollView style={styles.container}>
