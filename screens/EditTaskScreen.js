@@ -55,7 +55,7 @@ export default function EditTaskScreen({ navigation, route, deleteTask}) {
       const updatedTask = {
         ...taskToEdit,
         title,
-        dueDate: dueDate.toDateString(),
+        dueDate: dueDate.toISOString(),
         priority,
         category,
         subtasks,

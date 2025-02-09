@@ -36,13 +36,12 @@ export default function AddTaskScreen({ navigation, addTask, categories = [] }) 
       id: Date.now().toString(),
       title,
       subtasks,
-      dueDate: dueDate.toDateString(),
+      dueDate: dueDate.toISOString(),
       priority,
       category: finalCategory,
     };
 
     addTask(newTask);
-    alert('Task added successfully!');
     navigation.goBack();
   };
 

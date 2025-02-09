@@ -5,6 +5,8 @@ import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import moment from 'moment';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 
 // Import task functions from utils
@@ -20,10 +22,11 @@ export default function HomeScreen({ tasks = [], setTasks }) {
   const [taskFilter, setTaskFilter] = useState('all');
 
   useEffect(() => {
-    if (sortOption === 'progress') {
-      sortTasks(tasks, setTasks, 'progress');
+    if (sortOption) {
+      sortTasks(tasks, setTasks, sortOption);
     }
-  }, [sortOption]);
+  }, [sortOption, tasks]);
+  
 
   const categories = Array.from(new Set(tasks.map((task) => task.category)));
 
@@ -72,7 +75,7 @@ export default function HomeScreen({ tasks = [], setTasks }) {
   };
 
   const renderTaskItem = ({ item, index }) => {
-    const completedSubtasks = item.subtasks.filter((sub) => sub.completed).length;
+    const completedSubtasks = (item.subtasks ?? []).filter((sub) => sub.completed).length;
     const progress = completedSubtasks / item.subtasks.length;
     const percentage = Math.round(progress * 100);
     const isExpanded = expandedTasks[index] || viewMode === 'detailed';
@@ -103,7 +106,9 @@ export default function HomeScreen({ tasks = [], setTasks }) {
   
           {isExpanded && (
             <>
-              <Text style={styles.details}>Due Date: {item.dueDate}</Text>
+              <Text style={styles.details}>
+                Due Date: {moment(item.dueDate).format('DD MMMM YYYY')}
+              </Text>
               <Text style={styles.details}>Priority: {item.priority}</Text>
               <Text style={styles.details}>Category: {item.category}</Text>
   
