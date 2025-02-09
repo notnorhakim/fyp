@@ -55,7 +55,7 @@ export default function App() {
         />
         <Tab.Screen
           name="AddTask"
-          children={(props) => <AddTaskScreen {...props} addTask={addTask} />}
+          children={(props) => <AddTaskScreen {...props} addTask={addTask} categories={Array.from(new Set(tasks.map((task) => task.category)))} />}
           options={{
             tabBarButton: () => <CustomAddTaskButton />,
           }}

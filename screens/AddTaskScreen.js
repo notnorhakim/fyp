@@ -3,18 +3,17 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Button
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 
-export default function AddTaskScreen({ navigation, addTask }) {
+export default function AddTaskScreen({ navigation, addTask, categories = [] }) {
   const [title, setTitle] = useState('');
   const [subtaskName, setSubtaskName] = useState('');
   const [subtasks, setSubtasks] = useState([]);
   const [dueDate, setDueDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [priority, setPriority] = useState('Medium');
-  const [category, setCategory] = useState('Work');
-  const [categories, setCategories] = useState(['Work', 'Personal']); // Initial categories
-  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false); // Toggle for new category input
+  const [category, setCategory] = useState(categories.length > 0 ? categories[0] : 'Work'); // Default to first category
   const [newCategory, setNewCategory] = useState('');
-  const [showPlaceholder, setShowPlaceholder] = useState(true); // Control placeholder visibility
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [showPlaceholder, setShowPlaceholder] = useState(true);
 
   const addSubtask = () => {
     if (subtaskName.trim() !== '' && !subtasks.some(sub => sub.name === subtaskName.trim())) {
@@ -24,38 +23,28 @@ export default function AddTaskScreen({ navigation, addTask }) {
       alert('Subtask is empty or already exists.');
     }
   };
-  
-
-  const handleAddCategory = () => {
-    if (newCategory.trim() !== '' && !categories.includes(newCategory.trim())) {
-      setCategories([...categories, newCategory.trim()]);
-      setCategory(newCategory.trim());
-      setNewCategory('');
-      setShowNewCategoryInput(false); // Hide the new category input
-    } else {
-      alert('Category is empty or already exists.');
-    }
-  };
 
   const handleAddTask = () => {
-    if (title.trim() && subtasks.length > 0 && category.trim() !== '') {
-      const newTask = {
-        id: Date.now().toString(),
-        title,
-        subtasks,
-        dueDate: dueDate.toDateString(),
-        priority,
-        category,
-      };
-      addTask(newTask);
-      alert('Task added successfully!');
-      navigation.goBack();
-    } else {
+    const finalCategory = newCategory.trim() || category;
+    
+    if (!title.trim() || subtasks.length === 0 || !finalCategory.trim()) {
       alert('Please fill in all fields and add at least one subtask.');
+      return;
     }
+
+    const newTask = {
+      id: Date.now().toString(),
+      title,
+      subtasks,
+      dueDate: dueDate.toDateString(),
+      priority,
+      category: finalCategory,
+    };
+
+    addTask(newTask);
+    alert('Task added successfully!');
+    navigation.goBack();
   };
-  
-  
 
   return (
     <ScrollView style={styles.container}>
@@ -99,21 +88,21 @@ export default function AddTaskScreen({ navigation, addTask }) {
           selectedValue={category}
           onValueChange={(itemValue) => {
             if (itemValue === 'create') {
-              setShowNewCategoryInput(true); // Show the new category input
+              setShowNewCategoryInput(true);
               setCategory('');
             } else {
-              setShowNewCategoryInput(false); // Hide the new category input
+              setShowNewCategoryInput(false);
               setCategory(itemValue);
             }
           }}
-          onFocus={() => setShowPlaceholder(false)} // Hide placeholder when interacting with the picker
+          onFocus={() => setShowPlaceholder(false)}
           style={styles.picker}
         >
           {showPlaceholder && <Picker.Item label="Select a category" value="" />}
           {categories.map((cat, index) => (
             <Picker.Item key={index} label={cat} value={cat} />
           ))}
-          <Picker.Item label="Create new category" value="create" />
+          <Picker.Item label="Create New Category" value="create" />
         </Picker>
       </View>
       {showNewCategoryInput && (
@@ -124,9 +113,6 @@ export default function AddTaskScreen({ navigation, addTask }) {
             value={newCategory}
             onChangeText={setNewCategory}
           />
-          <TouchableOpacity style={styles.addCategoryButton} onPress={handleAddCategory}>
-            <Text style={styles.addCategoryButtonText}>Add Category</Text>
-          </TouchableOpacity>
         </View>
       )}
       <Text style={styles.label}>Subtasks</Text>
@@ -152,6 +138,7 @@ export default function AddTaskScreen({ navigation, addTask }) {
     </ScrollView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
