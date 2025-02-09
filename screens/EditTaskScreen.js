@@ -43,7 +43,6 @@ export default function EditTaskScreen({ navigation, route, deleteTask}) {
   
     if (taskToEdit) {
       deleteTask(taskToEdit.id); // ✅ Call the function correctly
-      alert('Task deleted successfully.');
       navigation.goBack(); // ✅ Navigate back to HomeScreen
     }
   };

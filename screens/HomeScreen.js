@@ -21,11 +21,71 @@ export default function HomeScreen({ tasks = [], setTasks }) {
   const navigation = useNavigation();
   const [taskFilter, setTaskFilter] = useState('all');
 
+  // useEffect(() => {
+  //   if (sortOption) {
+  //     sortTasks(tasks, setTasks, sortOption);
+  //   }
+  // }, [sortOption, tasks]);
+
   useEffect(() => {
-    if (sortOption) {
-      sortTasks(tasks, setTasks, sortOption);
+    const loadPreferences = async () => {
+      try {
+        const storedSortOption = await AsyncStorage.getItem('sortOption');
+        const storedFilterCategory = await AsyncStorage.getItem('filterCategory');
+        const storedTaskFilter = await AsyncStorage.getItem('taskFilter');
+        const storedViewMode = await AsyncStorage.getItem('viewMode');
+        const storedExpandedTasks = await AsyncStorage.getItem('expandedTasks');
+  
+        if (storedSortOption !== null) setSortOption(storedSortOption);
+        if (storedFilterCategory !== null) setFilterCategory(storedFilterCategory);
+        if (storedTaskFilter !== null) setTaskFilter(storedTaskFilter);
+        if (storedViewMode) setViewMode(storedViewMode);
+        if (storedExpandedTasks) setExpandedTasks(JSON.parse(storedExpandedTasks)); // ✅ Load saved expanded states
+      } catch (error) {
+        console.error('Error loading preferences:', error);
+      }
+    };
+  
+    loadPreferences();
+  }, []);
+
+  const savePreferences = async (key, value) => {
+    try {
+      await AsyncStorage.setItem(key, value); // Store as a plain string
+    } catch (error) {
+      console.error('Error saving preference:', error);
     }
-  }, [sortOption, tasks]);
+  };
+
+  const handleViewModeChange = async () => {
+    const newMode = viewMode === 'detailed' ? 'simplified' : 'detailed';
+    setViewMode(newMode);
+    await AsyncStorage.setItem('viewMode', newMode);
+  
+    // ✅ Override all conditions: Reset expansion based on view mode
+    setExpandedTasks((prevExpanded) => {
+      const newExpandedState = {};
+      if (newMode === 'detailed') {
+        // Expand all tasks
+        tasks.forEach((task) => {
+          newExpandedState[task.id] = true;
+        });
+      }
+      AsyncStorage.setItem('expandedTasks', JSON.stringify(newExpandedState)); // ✅ Save to storage
+      return newExpandedState;
+    });
+  };
+  
+  
+  
+
+  
+  
+  
+  
+  
+ 
+  
   
 
   const categories = Array.from(new Set(tasks.map((task) => task.category)));
@@ -48,12 +108,17 @@ export default function HomeScreen({ tasks = [], setTasks }) {
   );
   const upcomingTasks = filteredTasks.filter((task) => moment(task.dueDate).isAfter(endOfWeek, 'day'));
 
-  const toggleTaskExpansion = (index) => {
-    setExpandedTasks((prev) => ({
-      ...prev,
-      [index]: !prev[index],
-    }));
+  const toggleTaskExpansion = (taskId) => {
+    setExpandedTasks((prev) => {
+      const updatedExpanded = {
+        ...prev,
+        [taskId]: !prev[taskId], // ✅ Toggle expansion state
+      };
+      AsyncStorage.setItem('expandedTasks', JSON.stringify(updatedExpanded)); // ✅ Save expanded state persistently
+      return updatedExpanded;
+    });
   };
+  
 
   const updateTask = (updatedTask) => {
     setTasks((prevTasks) =>
@@ -78,7 +143,8 @@ export default function HomeScreen({ tasks = [], setTasks }) {
     const completedSubtasks = (item.subtasks ?? []).filter((sub) => sub.completed).length;
     const progress = completedSubtasks / item.subtasks.length;
     const percentage = Math.round(progress * 100);
-    const isExpanded = expandedTasks[index] || viewMode === 'detailed';
+    const isExpanded = expandedTasks[index] !== undefined ? expandedTasks[index] : viewMode === 'detailed';
+
   
     return (
       <TouchableOpacity onPress={() => toggleTaskExpansion(index)} activeOpacity={0.7}>
@@ -148,10 +214,10 @@ export default function HomeScreen({ tasks = [], setTasks }) {
       {/* Header Section */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
-          Showing: {getFilterLabel()} - {getSortLabel()} - {filterCategory ? filterCategory : 'All Categories'}
+          {getFilterLabel()} | {getSortLabel()} | {filterCategory ? filterCategory : 'All Categories'}
         </Text>
         <View style={styles.headerButtons}>
-          <TouchableOpacity onPress={() => setViewMode(viewMode === 'detailed' ? 'simplified' : 'detailed')}>
+          <TouchableOpacity onPress={handleViewModeChange}>
             <Ionicons name={viewMode === 'detailed' ? 'list' : 'eye'} size={28} color="black" />
           </TouchableOpacity>
 
@@ -165,78 +231,77 @@ export default function HomeScreen({ tasks = [], setTasks }) {
       {menuVisible && (
         <View style={styles.menuContainer}>
           <Text style={styles.menuLabel}>Sort By:</Text>
-          <Picker
-            selectedValue={sortOption}
-            onValueChange={(value) => {
-              sortTasks(tasks, setTasks, value);
-              setSortOption(value);
-              setMenuVisible(false);
-            }}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select an option" value="" />
-            <Picker.Item label="Priority" value="priority" />
-            <Picker.Item label="Due Date" value="dueDate" />
-            <Picker.Item label="Progress" value="progress" />
-          </Picker>
+          {/* Sort By Picker */}
+<Picker
+  selectedValue={sortOption}
+  onValueChange={(value) => {
+    setSortOption(value);
+    savePreferences('sortOption', value);
+    sortTasks(tasks, setTasks, value);
+    setMenuVisible(false);
+  }}
+  style={styles.picker}
+>
+  <Picker.Item label="Select an option" value="" />
+  <Picker.Item label="Priority" value="priority" />
+  <Picker.Item label="Due Date" value="dueDate" />
+  <Picker.Item label="Progress" value="progress" />
+</Picker>
 
-          <Text style={styles.menuLabel}>Filter By Category:</Text>
-          <Picker
-            selectedValue={filterCategory}
-            onValueChange={(value) => {
-              setFilterCategory(value);
-              setMenuVisible(false);
-            }}
-            style={styles.picker}
-          >
-            <Picker.Item label="All Categories" value="" />
-            {categories.map((cat, index) => (
-              <Picker.Item key={index} label={cat} value={cat} />
-            ))}
-          </Picker>
+  {/* Filter By Category Picker */}
+  <Picker
+    selectedValue={filterCategory}
+    onValueChange={(value) => {
+      setFilterCategory(value);
+      savePreferences('filterCategory', value);
+      setMenuVisible(false);
+    }}
+    style={styles.picker}
+  >
+    <Picker.Item label="All Categories" value="" />
+    {categories.map((cat, index) => (
+      <Picker.Item key={index} label={cat} value={cat} />
+    ))}
+  </Picker>
 
-          <Text style={styles.filterLabel}>Filter by Completion:</Text>
-          <Picker
-            selectedValue={taskFilter}
-            onValueChange={(value) => setTaskFilter(value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Show All" value="all" />
-            <Picker.Item label="Completed" value="completed" />
-            <Picker.Item label="Incomplete" value="incomplete" />
-          </Picker>
+  {/* Filter by Completion Picker */}
+  <Picker
+    selectedValue={taskFilter}
+    onValueChange={(value) => {
+      setTaskFilter(value);
+      savePreferences('taskFilter', value);
+    }}
+    style={styles.picker}
+  >
+    <Picker.Item label="Show All" value="all" />
+    <Picker.Item label="Completed" value="completed" />
+    <Picker.Item label="Incomplete" value="incomplete" />
+  </Picker>
+
         </View>
       )}
 
       {/* Task List or Sections */}
       <FlatList
-        data={sortOption === '' ? [
-          { title: 'Due Today', data: tasksDueToday },
-          { title: 'This Week', data: tasksDueThisWeek },
-          { title: 'Upcoming', data: upcomingTasks },
-        ] : filteredTasks}
-        keyExtractor={(item, index) => (sortOption === '' ? item.title + index : item.id)}
-        renderItem={({ item }) => {
-          if (sortOption === '') {
-            return (
-              <>
-                <Text style={styles.sectionTitle}>{item.title}</Text>
-                <FlatList
-                  data={item.data}
-                  keyExtractor={(task) => task.id}
-                  renderItem={renderTaskItem}
-                  ListEmptyComponent={<Text style={styles.emptyMessage}>No tasks in this category.</Text>}
-                />
-              </>
-            );
-          } else {
-            return renderTaskItem({ item });
-          }
-        }}
-        contentContainerStyle={{ paddingBottom: 80 }}
-        keyboardShouldPersistTaps="handled"
-        ListEmptyComponent={<Text>No tasks yet. Add one!</Text>}
+  data={[
+    { title: 'Due Today', data: tasksDueToday },
+    { title: 'This Week', data: tasksDueThisWeek },
+    { title: 'Upcoming', data: upcomingTasks },
+  ]}
+  keyExtractor={(item, index) => item.title + index}
+  renderItem={({ item }) => (
+    <>
+      <Text style={styles.sectionTitle}>{item.title}</Text>
+      <FlatList
+        data={item.data}
+        keyExtractor={(task) => task.id}
+        renderItem={renderTaskItem}
+        ListEmptyComponent={<Text style={styles.emptyMessage}>No tasks in this category.</Text>}
       />
+    </>
+  )}
+/>
+
     </View>
   );
 }

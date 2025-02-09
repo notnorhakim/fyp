@@ -1,7 +1,7 @@
 export const toggleSubtask = (tasks, setTasks, setExpandedTasks, taskId, subtaskIndex, sortOption) => {
   setTasks((prevTasks) => {
     const updatedTasks = prevTasks.map((task) => {
-      if (task.id !== taskId) return task; // ✅ Ensure only the correct task is modified
+      if (task.id !== taskId) return task; 
 
       const updatedSubtasks = task.subtasks.map((subtask, subIndex) =>
         subIndex === subtaskIndex ? { ...subtask, completed: !subtask.completed } : subtask
@@ -15,7 +15,7 @@ export const toggleSubtask = (tasks, setTasks, setExpandedTasks, taskId, subtask
         ...task,
         subtasks: updatedSubtasks,
         progress,
-        completed: progress === 1, // ✅ Mark task as completed only if all subtasks are done
+        completed: progress === 1, 
       };
     });
 
@@ -23,12 +23,23 @@ export const toggleSubtask = (tasks, setTasks, setExpandedTasks, taskId, subtask
       updatedTasks.sort((a, b) => b.progress - a.progress);
     }
 
-    // ✅ Preserve expandedTasks without affecting other tasks
-    setExpandedTasks((prevExpanded) => ({ ...prevExpanded }));
+    // ✅ Preserve user-expanded state
+    setExpandedTasks((prevExpanded) => {
+      const updatedExpanded = {
+        ...prevExpanded,
+        [taskId]: true, // Ensure only the parent task stays expanded
+      };
+      AsyncStorage.setItem('expandedTasks', JSON.stringify(updatedExpanded)); // ✅ Save expanded state persistently
+      return updatedExpanded;
+    });
 
     return updatedTasks;
   });
 };
+
+
+
+
 
   
   
