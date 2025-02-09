@@ -20,6 +20,9 @@ export default function HomeScreen({ tasks = [], setTasks }) {
   const [expandedTasks, setExpandedTasks] = useState({});
   const navigation = useNavigation();
   const [taskFilter, setTaskFilter] = useState('all');
+  const [selectedTasks, setSelectedTasks] = useState({}); // Track selected tasks
+  const [selectMode, setSelectMode] = useState(false); // Toggle Select Mode
+
 
   // useEffect(() => {
   //   if (sortOption) {
@@ -126,6 +129,39 @@ export default function HomeScreen({ tasks = [], setTasks }) {
     );
   };
 
+  const markSelectedAsComplete = () => {
+    setTasks((prevTasks) => 
+      prevTasks.map((task) => {
+        if (selectedTasks[task.id]) {
+          // Mark the task and all its subtasks as completed
+          const updatedSubtasks = task.subtasks?.map((subtask) => ({
+            ...subtask,
+            completed: true,
+          }));
+  
+          return {
+            ...task,
+            completed: true, // Mark task as completed
+            subtasks: updatedSubtasks, // Update subtasks
+          };
+        }
+        return task;
+      })
+    );
+  
+    setSelectedTasks({}); // Clear selection
+    setSelectMode(false); // Exit Select Mode
+  };
+  
+
+  const deleteSelectedTasks = () => {
+    setTasks((prevTasks) => prevTasks.filter((task) => !selectedTasks[task.id]));
+    setSelectedTasks({}); // ✅ Clear selection
+    setSelectMode(false); // ✅ Exit Select Mode
+  };
+  
+  
+
   const getFilterLabel = () => {
     if (taskFilter === 'completed') return 'Completed';
     if (taskFilter === 'incomplete') return 'Incomplete';
@@ -143,70 +179,96 @@ export default function HomeScreen({ tasks = [], setTasks }) {
     const completedSubtasks = (item.subtasks ?? []).filter((sub) => sub.completed).length;
     const progress = completedSubtasks / item.subtasks.length;
     const percentage = Math.round(progress * 100);
-    const isExpanded = expandedTasks[index] !== undefined ? expandedTasks[index] : viewMode === 'detailed';
+    const isExpanded = expandedTasks[item.id] !== undefined ? expandedTasks[item.id] : viewMode === 'detailed';
+    const isSelected = !!selectedTasks[item.id]; // ✅ Check if task is selected
 
-  
     return (
-      <TouchableOpacity onPress={() => toggleTaskExpansion(index)} activeOpacity={0.7}>
-        <View style={[styles.taskCard, item.completed && styles.completedTask]}>
-          {/* Edit Button at Top-Right */}
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => {
-              navigation.navigate('Edit Task', {
-                taskToEdit: item,
-                updateTask: (updatedTask) => {
-                  setTasks((prevTasks) =>
-                    prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
-                  );
-                },
-                categories: categories,
-              });
-            }}
-          >
-            <Ionicons name="create-outline" size={20} color="black" />
-          </TouchableOpacity>
-  
-          {/* Task Title */}
-          <Text style={styles.taskTitle}>{item.title}</Text>
-  
-          {isExpanded && (
-            <>
-              <Text style={styles.details}>
-                Due Date: {moment(item.dueDate).format('DD MMMM YYYY')}
-              </Text>
-              <Text style={styles.details}>Priority: {item.priority}</Text>
-              <Text style={styles.details}>Category: {item.category}</Text>
-  
-              {item.completed ? <Text style={styles.completedLabel}>✔ Completed</Text> : null}
-  
-              <View style={styles.progressContainer}>
-                <Progress.Bar progress={progress} width={200} />
-                <Text style={styles.percentage}>{percentage}%</Text>
-              </View>
-  
-              {item.subtasks.map((sub, subIndex) => (
-                <TouchableOpacity
-                  key={subIndex}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    toggleSubtask(tasks, setTasks, setExpandedTasks, item.id, subIndex, sortOption);
-                  }}
-                  style={[
-                    styles.subtask,
-                    sub.completed ? styles.completedSubtask : null,
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.subtaskText}>{sub.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </>
-          )}
-        </View>
+      <TouchableOpacity 
+        onPress={() => {
+          if (selectMode) {
+            // ✅ Toggle selection in Select Mode
+            setSelectedTasks((prev) => ({
+              ...prev,
+              [item.id]: !prev[item.id] ? true : undefined,
+            }));
+          } else {
+            toggleTaskExpansion(item.id);
+          }
+        }} 
+        activeOpacity={0.7}
+        style={[
+          styles.taskCard,
+          item.completed && styles.completedTask, // Apply green highlight for completed tasks
+          selectMode && selectedTasks[item.id] && styles.selectedTask, // Highlight if selected in Select Mode
+        ]} // ✅ Apply selected style
+      >
+        {/* ✅ Checkbox for Select Mode */}
+        {selectMode && (
+          <View style={styles.checkboxContainer}>
+            <Ionicons name={isSelected ? "checkbox-outline" : "square-outline"} size={20} color="black" />
+          </View>
+        )}
+
+        {/* Edit Button at Top-Right */}
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => {
+            navigation.navigate('Edit Task', {
+              taskToEdit: item,
+              updateTask: (updatedTask) => {
+                setTasks((prevTasks) =>
+                  prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
+                );
+              },
+              categories: categories,
+            });
+          }}
+        >
+          <Ionicons name="create-outline" size={20} color="black" />
+        </TouchableOpacity>
+
+        {/* Task Title */}
+        <Text style={styles.taskTitle}>{item.title}</Text>
+
+        {isExpanded && (
+          <>
+            <Text style={styles.details}>
+              Due Date: {moment(item.dueDate).format('DD MMMM YYYY')}
+            </Text>
+            <Text style={styles.details}>Priority: {item.priority}</Text>
+            <Text style={styles.details}>Category: {item.category}</Text>
+
+            {item.completed ? <Text style={styles.completedLabel}>✔ Completed</Text> : null}
+
+            {/* ✅ Progress Bar */}
+            <View style={styles.progressContainer}>
+              <Progress.Bar progress={progress} width={200} />
+              <Text style={styles.percentage}>{percentage}%</Text>
+            </View>
+
+            {/* ✅ Subtasks */}
+            {item.subtasks.map((sub, subIndex) => (
+              <TouchableOpacity
+                key={subIndex}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  toggleSubtask(tasks, setTasks, setExpandedTasks, item.id, subIndex, sortOption);
+                }}
+                style={[
+                  styles.subtask,
+                  sub.completed ? styles.completedSubtask : null,
+                ]}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.subtaskText}>{sub.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
       </TouchableOpacity>
     );
-  };
+};
+
   
 
   return (
@@ -217,12 +279,18 @@ export default function HomeScreen({ tasks = [], setTasks }) {
           {getFilterLabel()} | {getSortLabel()} | {filterCategory ? filterCategory : 'All Categories'}
         </Text>
         <View style={styles.headerButtons}>
+
+          {/* ✅ Toggle Select Mode */}
+          <TouchableOpacity onPress={() => setSelectMode(!selectMode)}>
+            <Ionicons name={selectMode ? "close-circle" : "checkbox"} size={18} color="black" />
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={handleViewModeChange}>
-            <Ionicons name={viewMode === 'detailed' ? 'list' : 'eye'} size={28} color="black" />
+            <Ionicons name={viewMode === 'detailed' ? 'list' : 'eye'} size={18} color="black" />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
-            <Ionicons name="filter" size={28} color="black" />
+            <Ionicons name="filter" size={18} color="black" />
           </TouchableOpacity>
         </View>
       </View>
@@ -232,75 +300,90 @@ export default function HomeScreen({ tasks = [], setTasks }) {
         <View style={styles.menuContainer}>
           <Text style={styles.menuLabel}>Sort By:</Text>
           {/* Sort By Picker */}
-<Picker
-  selectedValue={sortOption}
-  onValueChange={(value) => {
-    setSortOption(value);
-    savePreferences('sortOption', value);
-    sortTasks(tasks, setTasks, value);
-    setMenuVisible(false);
-  }}
-  style={styles.picker}
->
-  <Picker.Item label="Select an option" value="" />
-  <Picker.Item label="Priority" value="priority" />
-  <Picker.Item label="Due Date" value="dueDate" />
-  <Picker.Item label="Progress" value="progress" />
-</Picker>
+          <Picker
+            selectedValue={sortOption}
+            onValueChange={(value) => {
+              setSortOption(value);
+              savePreferences('sortOption', value);
+              sortTasks(tasks, setTasks, value);
+              setMenuVisible(false);
+            }}
+            style={styles.picker}
+          >
+            <Picker.Item label="Select an option" value="" />
+            <Picker.Item label="Priority" value="priority" />
+            <Picker.Item label="Due Date" value="dueDate" />
+            <Picker.Item label="Progress" value="progress" />
+          </Picker>
 
-  {/* Filter By Category Picker */}
-  <Picker
-    selectedValue={filterCategory}
-    onValueChange={(value) => {
-      setFilterCategory(value);
-      savePreferences('filterCategory', value);
-      setMenuVisible(false);
-    }}
-    style={styles.picker}
-  >
-    <Picker.Item label="All Categories" value="" />
-    {categories.map((cat, index) => (
-      <Picker.Item key={index} label={cat} value={cat} />
-    ))}
-  </Picker>
+            {/* Filter By Category Picker */}
+            <Picker
+              selectedValue={filterCategory}
+              onValueChange={(value) => {
+                setFilterCategory(value);
+                savePreferences('filterCategory', value);
+                setMenuVisible(false);
+              }}
+              style={styles.picker}
+            >
+              <Picker.Item label="All Categories" value="" />
+              {categories.map((cat, index) => (
+                <Picker.Item key={index} label={cat} value={cat} />
+              ))}
+            </Picker>
 
-  {/* Filter by Completion Picker */}
-  <Picker
-    selectedValue={taskFilter}
-    onValueChange={(value) => {
-      setTaskFilter(value);
-      savePreferences('taskFilter', value);
-    }}
-    style={styles.picker}
-  >
-    <Picker.Item label="Show All" value="all" />
-    <Picker.Item label="Completed" value="completed" />
-    <Picker.Item label="Incomplete" value="incomplete" />
-  </Picker>
+            {/* Filter by Completion Picker */}
+            <Picker
+              selectedValue={taskFilter}
+              onValueChange={(value) => {
+                setTaskFilter(value);
+                savePreferences('taskFilter', value);
+              }}
+              style={styles.picker}
+            >
+              <Picker.Item label="Show All" value="all" />
+              <Picker.Item label="Completed" value="completed" />
+              <Picker.Item label="Incomplete" value="incomplete" />
+            </Picker>
 
         </View>
       )}
 
+      {/* ✅ Add Action Buttons for Selected Tasks */}
+      {selectMode && (
+        <View style={styles.selectActions}>
+          <TouchableOpacity onPress={markSelectedAsComplete} style={styles.actionButton}>
+            <Text style={styles.actionText}>✔ Mark Complete</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={deleteSelectedTasks} style={styles.actionButton}>
+            <Text style={styles.actionText}>🗑 Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      
+
       {/* Task List or Sections */}
       <FlatList
-  data={[
-    { title: 'Due Today', data: tasksDueToday },
-    { title: 'This Week', data: tasksDueThisWeek },
-    { title: 'Upcoming', data: upcomingTasks },
-  ]}
-  keyExtractor={(item, index) => item.title + index}
-  renderItem={({ item }) => (
-    <>
-      <Text style={styles.sectionTitle}>{item.title}</Text>
-      <FlatList
-        data={item.data}
-        keyExtractor={(task) => task.id}
-        renderItem={renderTaskItem}
-        ListEmptyComponent={<Text style={styles.emptyMessage}>No tasks in this category.</Text>}
+        data={[
+          { title: 'Due Today', data: tasksDueToday },
+          { title: 'This Week', data: tasksDueThisWeek },
+          { title: 'Upcoming', data: upcomingTasks },
+        ]}
+        keyExtractor={(item, index) => item.title + index}
+        renderItem={({ item }) => (
+          <>
+            <Text style={styles.sectionTitle}>{item.title}</Text>
+            <FlatList
+              data={item.data}
+              keyExtractor={(task) => task.id}
+              renderItem={renderTaskItem}
+              ListEmptyComponent={<Text style={styles.emptyMessage}>No tasks in this category.</Text>}
+            />
+          </>
+          )}
       />
-    </>
-  )}
-/>
 
     </View>
   );
@@ -390,5 +473,18 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     zIndex: 1, // Ensure the button appears above other elements
+  },
+  selectedTask: {
+    backgroundColor: "lightgrey", // ✅ Light green for selected tasks
+  },
+  taskRow: {
+    flexDirection: "row", // Align checkbox and task content horizontally
+    alignItems: "center", // Center vertically
+  },
+  checkboxContainer: {
+    marginRight: 10, // Add spacing between checkbox and task content
+  },
+  taskContent: {
+    flex: 1, // Ensure task content takes up the remaining space
   },
 });
