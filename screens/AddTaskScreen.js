@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Button } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Button, Linking } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+
+
+
 
 export default function AddTaskScreen({ navigation, addTask, categories = [] }) {
   const [title, setTitle] = useState('');
@@ -10,10 +17,16 @@ export default function AddTaskScreen({ navigation, addTask, categories = [] }) 
   const [dueDate, setDueDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [priority, setPriority] = useState('Medium');
-  const [category, setCategory] = useState(categories.length > 0 ? categories[0] : 'Work'); // Default to first category
+  const [category, setCategory] = useState(categories.length > 0 ? categories[0] : 'Work');
   const [newCategory, setNewCategory] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [showPlaceholder, setShowPlaceholder] = useState(true);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+
+  useEffect(() => {
+    console.log("Attached files:", attachedFiles);
+  }, [attachedFiles]);
+  
 
   const addSubtask = () => {
     if (subtaskName.trim() !== '' && !subtasks.some(sub => sub.name === subtaskName.trim())) {
@@ -23,6 +36,21 @@ export default function AddTaskScreen({ navigation, addTask, categories = [] }) 
       alert('Subtask is empty or already exists.');
     }
   };
+
+  const deleteFile = (index) => {
+    setAttachedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  };
+  
+
+  const attachFile = async () => {
+    let result = await DocumentPicker.getDocumentAsync({});
+    console.log("File picker result:", result);
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setAttachedFiles(prevFiles => [...prevFiles, result.assets[0]]);
+    }
+    
+  };
+  
 
   const handleAddTask = () => {
     const finalCategory = newCategory.trim() || category;
@@ -39,6 +67,7 @@ export default function AddTaskScreen({ navigation, addTask, categories = [] }) 
       dueDate: dueDate.toISOString(),
       priority,
       category: finalCategory,
+      attachments: attachedFiles,
     };
 
     addTask(newTask);
@@ -46,7 +75,7 @@ export default function AddTaskScreen({ navigation, addTask, categories = [] }) 
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}>
       <Text style={styles.label}>Task Title</Text>
       <TextInput
         style={styles.input}
@@ -131,13 +160,60 @@ export default function AddTaskScreen({ navigation, addTask, categories = [] }) 
           <Text key={index} style={styles.subtaskItem}>• {subtask.name}</Text>
         ))}
       </View>
+      <Text style={styles.label}>Attachments</Text>
+      <View style={styles.attachmentsContainer}>
+        <Button title="Attach File" onPress={attachFile} />
+        {attachedFiles.length ? (
+          attachedFiles.map((file, index) => (
+            <View key={index} style={styles.attachmentRow}>
+              <TouchableOpacity
+                style={styles.attachmentItem}
+                onPress={async () => {
+                  try {
+                    const newPath = FileSystem.cacheDirectory + file.name;
+                    await FileSystem.copyAsync({ from: file.uri, to: newPath });
+                    if (await Sharing.isAvailableAsync()) {
+                      await Sharing.shareAsync(newPath);
+                    } else {
+                      await Linking.openURL(newPath);
+                    }
+                  } catch (err) {
+                    console.error("Error opening file:", err);
+                  }
+                }}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={24}
+                  color="black"
+                  style={styles.attachmentIcon}
+                />
+                <Text style={styles.attachmentTitle} numberOfLines={1}>
+                  {file.name}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => deleteFile(index)}
+                style={styles.deleteIconContainer}
+              >
+                <Ionicons name="trash-outline" size={24} color="red" />
+              </TouchableOpacity>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.noAttachment}>No files attached</Text>
+        )}
+
+
+      </View>
+
+
       <View style={styles.addButtonContainer}>
         <Button title="Add Task" onPress={handleAddTask} />
       </View>
     </ScrollView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
@@ -168,18 +244,6 @@ const styles = StyleSheet.create({
     height: 50,
     width: '100%',
   },
-  addCategoryButton: {
-    marginTop: 8,
-    backgroundColor: '#007BFF',
-    borderRadius: 8,
-    padding: 10,
-    alignItems: 'center',
-  },
-  addCategoryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   subtaskInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -208,8 +272,49 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   subtaskItem: { marginVertical: 4, fontSize: 16 },
+  attachmentsContainer: {
+    marginVertical: 8,
+  },
+  fileItem: { marginVertical: 4, fontSize: 16, color: 'blue' },
   addButtonContainer: {
     marginTop: 16,
-    marginBottom: 32, // Extra margin for scroll padding
+    marginBottom: 32,
   },
+  attachmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 4,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    width: '100%', // keeps it within the parent container
+  },
+  attachmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1, // allow the file item area to take available space
+  },
+  attachmentIcon: {
+    marginRight: 8,
+  },
+  attachmentTitle: {
+    fontSize: 16,
+    flex: 1,         // use available space
+    flexShrink: 1,   // shrink text if needed
+  },
+  deleteIconContainer: {
+    padding: 4,
+  },
+  noAttachment: {
+    fontSize: 14,
+    color: 'gray',
+    marginTop: 4,
+  },
+  
+  
+  
+  
+  
 });

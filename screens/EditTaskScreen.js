@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Button } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Button, Linking } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
-export default function EditTaskScreen({ navigation, route, deleteTask}) {
+export default function EditTaskScreen({ navigation, route, deleteTask }) {
   const { taskToEdit, updateTask, categories } = route.params || {};
 
   if (!taskToEdit) {
@@ -19,16 +23,33 @@ export default function EditTaskScreen({ navigation, route, deleteTask}) {
   const [category, setCategory] = useState(taskToEdit.category);
   const [subtasks, setSubtasks] = useState(taskToEdit.subtasks || []);
   const [newSubtask, setNewSubtask] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState(taskToEdit.attachments || []);
+
+  const attachFile = async () => {
+    let result = await DocumentPicker.getDocumentAsync({});
+    console.log("File picker result:", result);
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setAttachedFiles(prevFiles => [...prevFiles, result.assets[0]]);
+    }
+  };
+
+  const deleteFile = (index) => {
+    setAttachedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
+  };
 
   const handleAddSubtask = () => {
     if (newSubtask.trim()) {
-      setSubtasks((prev) => [...prev, { name: newSubtask, completed: false }]);
+      setSubtasks(prev => [...prev, { name: newSubtask, completed: false }]);
       setNewSubtask('');
     }
   };
 
+  const deleteSubtask = (index) => {
+    setSubtasks(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleToggleSubtask = (index) => {
-    setSubtasks((prev) =>
+    setSubtasks(prev =>
       prev.map((subtask, i) =>
         i === index ? { ...subtask, completed: !subtask.completed } : subtask
       )
@@ -40,14 +61,11 @@ export default function EditTaskScreen({ navigation, route, deleteTask}) {
       alert('Error: deleteTask function not found.');
       return;
     }
-  
     if (taskToEdit) {
-      deleteTask(taskToEdit.id); // ✅ Call the function correctly
-      navigation.goBack(); // ✅ Navigate back to HomeScreen
+      deleteTask(taskToEdit.id);
+      navigation.goBack();
     }
   };
-  
-  
 
   const handleUpdateTask = () => {
     if (title.trim() && subtasks.length > 0 && category.trim() !== '') {
@@ -58,17 +76,20 @@ export default function EditTaskScreen({ navigation, route, deleteTask}) {
         priority,
         category,
         subtasks,
+        attachments: attachedFiles,
       };
-
-      updateTask(updatedTask); // ✅ Updates the task in HomeScreen
-      navigation.goBack(); // ✅ Returns to HomeScreen after update
+      updateTask(updatedTask);
+      navigation.goBack();
     } else {
       alert('Please fill in all fields and add at least one subtask.');
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+    >
       <Text style={styles.label}>Edit Task</Text>
 
       <Text style={styles.label}>Task Title</Text>
@@ -98,11 +119,7 @@ export default function EditTaskScreen({ navigation, route, deleteTask}) {
       </Picker>
 
       <Text style={styles.label}>Category</Text>
-      <Picker
-        selectedValue={category}
-        onValueChange={setCategory}
-        style={styles.picker}
-      >
+      <Picker selectedValue={category} onValueChange={setCategory} style={styles.picker}>
         {categories.map((cat, index) => (
           <Picker.Item key={index} label={cat} value={cat} />
         ))}
@@ -110,15 +127,18 @@ export default function EditTaskScreen({ navigation, route, deleteTask}) {
 
       <Text style={styles.label}>Subtasks</Text>
       {subtasks.map((subtask, index) => (
-        <TouchableOpacity
-          key={index}
-          style={[styles.subtask, subtask.completed ? styles.completedSubtask : null]}
-          onPress={() => handleToggleSubtask(index)}
-        >
-          <Text>{subtask.name}</Text>
-        </TouchableOpacity>
+        <View key={index} style={styles.subtaskRow}>
+          <TouchableOpacity
+            style={[styles.subtask, subtask.completed ? styles.completedSubtask : null, { flex: 1 }]}
+            onPress={() => handleToggleSubtask(index)}
+          >
+            <Text>{subtask.name}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => deleteSubtask(index)} style={styles.deleteIconContainer}>
+            <Ionicons name="trash-outline" size={24} color="red" />
+          </TouchableOpacity>
+        </View>
       ))}
-
       <View style={styles.subtaskInputContainer}>
         <TextInput
           style={styles.subtaskInput}
@@ -131,13 +151,49 @@ export default function EditTaskScreen({ navigation, route, deleteTask}) {
         </TouchableOpacity>
       </View>
 
+      <Text style={styles.label}>Attachments</Text>
+      <View style={styles.attachmentsContainer}>
+        <Button title="Attach File" onPress={attachFile} />
+        {attachedFiles.length ? (
+          attachedFiles.map((file, index) => (
+            <View key={index} style={styles.attachmentRow}>
+              <TouchableOpacity
+                style={styles.attachmentItem}
+                onPress={async () => {
+                  try {
+                    const newPath = FileSystem.cacheDirectory + file.name;
+                    await FileSystem.copyAsync({ from: file.uri, to: newPath });
+                    if (await Sharing.isAvailableAsync()) {
+                      await Sharing.shareAsync(newPath);
+                    } else {
+                      await Linking.openURL(newPath);
+                    }
+                  } catch (err) {
+                    console.error("Error opening file:", err);
+                  }
+                }}
+              >
+                <Ionicons name="document-text-outline" size={24} color="black" style={styles.attachmentIcon} />
+                <Text style={styles.attachmentTitle} numberOfLines={1}>
+                  {file.name}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => deleteFile(index)} style={styles.deleteIconContainer}>
+                <Ionicons name="trash-outline" size={24} color="red" />
+              </TouchableOpacity>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.noAttachment}>No files attached</Text>
+        )}
+      </View>
+
       <View style={styles.addButtonContainer}>
         <Button title="Update Task" onPress={handleUpdateTask} />
       </View>
       <View style={styles.deleteButtonContainer}>
         <Button title="Delete Task" onPress={handleDeleteTask} color="red" />
       </View>
-
     </ScrollView>
   );
 }
@@ -161,12 +217,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   picker: { height: 50, width: '100%' },
-  subtask: {
+  subtaskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 8,
     padding: 8,
     borderWidth: 1,
     borderRadius: 8,
     borderColor: '#ccc',
+  },
+  subtask: {
+    padding: 8,
   },
   completedSubtask: {
     backgroundColor: '#d4edda',
@@ -201,6 +263,40 @@ const styles = StyleSheet.create({
   deleteButtonContainer: {
     marginTop: 16,
     marginBottom: 32,
-  }
-  
+  },
+  attachmentsContainer: {
+    marginVertical: 8,
+  },
+  attachmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 4,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    width: '100%',
+  },
+  attachmentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  attachmentIcon: {
+    marginRight: 8,
+  },
+  attachmentTitle: {
+    fontSize: 16,
+    flex: 1,
+    flexShrink: 1,
+  },
+  deleteIconContainer: {
+    padding: 4,
+  },
+  noAttachment: {
+    fontSize: 14,
+    color: 'gray',
+    marginTop: 4,
+  },
 });

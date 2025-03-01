@@ -7,8 +7,6 @@ import { useNavigation } from '@react-navigation/native';
 import moment from 'moment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-
-
 // Import task functions from utils
 import { toggleSubtask, sortTasks } from '../utils/taskUtils';
 
@@ -23,13 +21,6 @@ export default function HomeScreen({ tasks = [], setTasks }) {
   const [selectedTasks, setSelectedTasks] = useState({}); // Track selected tasks
   const [selectMode, setSelectMode] = useState(false); // Toggle Select Mode
 
-
-  // useEffect(() => {
-  //   if (sortOption) {
-  //     sortTasks(tasks, setTasks, sortOption);
-  //   }
-  // }, [sortOption, tasks]);
-
   useEffect(() => {
     const loadPreferences = async () => {
       try {
@@ -38,23 +29,23 @@ export default function HomeScreen({ tasks = [], setTasks }) {
         const storedTaskFilter = await AsyncStorage.getItem('taskFilter');
         const storedViewMode = await AsyncStorage.getItem('viewMode');
         const storedExpandedTasks = await AsyncStorage.getItem('expandedTasks');
-  
+
         if (storedSortOption !== null) setSortOption(storedSortOption);
         if (storedFilterCategory !== null) setFilterCategory(storedFilterCategory);
         if (storedTaskFilter !== null) setTaskFilter(storedTaskFilter);
         if (storedViewMode) setViewMode(storedViewMode);
-        if (storedExpandedTasks) setExpandedTasks(JSON.parse(storedExpandedTasks)); // ✅ Load saved expanded states
+        if (storedExpandedTasks) setExpandedTasks(JSON.parse(storedExpandedTasks));
       } catch (error) {
         console.error('Error loading preferences:', error);
       }
     };
-  
+
     loadPreferences();
   }, []);
 
   const savePreferences = async (key, value) => {
     try {
-      await AsyncStorage.setItem(key, value); // Store as a plain string
+      await AsyncStorage.setItem(key, value);
     } catch (error) {
       console.error('Error saving preference:', error);
     }
@@ -64,32 +55,18 @@ export default function HomeScreen({ tasks = [], setTasks }) {
     const newMode = viewMode === 'detailed' ? 'simplified' : 'detailed';
     setViewMode(newMode);
     await AsyncStorage.setItem('viewMode', newMode);
-  
-    // ✅ Override all conditions: Reset expansion based on view mode
+
     setExpandedTasks((prevExpanded) => {
       const newExpandedState = {};
       if (newMode === 'detailed') {
-        // Expand all tasks
         tasks.forEach((task) => {
           newExpandedState[task.id] = true;
         });
       }
-      AsyncStorage.setItem('expandedTasks', JSON.stringify(newExpandedState)); // ✅ Save to storage
+      AsyncStorage.setItem('expandedTasks', JSON.stringify(newExpandedState));
       return newExpandedState;
     });
   };
-  
-  
-  
-
-  
-  
-  
-  
-  
- 
-  
-  
 
   const categories = Array.from(new Set(tasks.map((task) => task.category)));
 
@@ -101,7 +78,6 @@ export default function HomeScreen({ tasks = [], setTasks }) {
       return true;
     });
 
-  // Categorize tasks into sections
   const today = moment().startOf('day');
   const endOfWeek = moment().endOf('week');
 
@@ -115,52 +91,59 @@ export default function HomeScreen({ tasks = [], setTasks }) {
     setExpandedTasks((prev) => {
       const updatedExpanded = {
         ...prev,
-        [taskId]: !prev[taskId], // ✅ Toggle expansion state
+        [taskId]: !prev[taskId],
       };
-      AsyncStorage.setItem('expandedTasks', JSON.stringify(updatedExpanded)); // ✅ Save expanded state persistently
+      AsyncStorage.setItem('expandedTasks', JSON.stringify(updatedExpanded));
       return updatedExpanded;
     });
   };
-  
 
   const updateTask = (updatedTask) => {
     setTasks((prevTasks) =>
-      prevTasks.map((task) => (task.title === updatedTask.title ? updatedTask : task))
+      prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
     );
   };
 
   const markSelectedAsComplete = () => {
-    setTasks((prevTasks) => 
+    setTasks((prevTasks) =>
       prevTasks.map((task) => {
         if (selectedTasks[task.id]) {
-          // Mark the task and all its subtasks as completed
           const updatedSubtasks = task.subtasks?.map((subtask) => ({
             ...subtask,
             completed: true,
           }));
-  
           return {
             ...task,
-            completed: true, // Mark task as completed
-            subtasks: updatedSubtasks, // Update subtasks
+            completed: true,
+            subtasks: updatedSubtasks,
           };
         }
         return task;
       })
     );
-  
-    setSelectedTasks({}); // Clear selection
-    setSelectMode(false); // Exit Select Mode
+
+    setSelectedTasks({});
+    setSelectMode(false);
   };
-  
 
   const deleteSelectedTasks = () => {
     setTasks((prevTasks) => prevTasks.filter((task) => !selectedTasks[task.id]));
-    setSelectedTasks({}); // ✅ Clear selection
-    setSelectMode(false); // ✅ Exit Select Mode
+    setSelectedTasks({});
+    setSelectMode(false);
   };
-  
-  
+
+  // New function to toggle select all
+  const selectAllTasks = () => {
+    if (Object.keys(selectedTasks).length === tasks.length) {
+      setSelectedTasks({});
+    } else {
+      const allSelected = {};
+      tasks.forEach((task) => {
+        allSelected[task.id] = true;
+      });
+      setSelectedTasks(allSelected);
+    }
+  };
 
   const getFilterLabel = () => {
     if (taskFilter === 'completed') return 'Completed';
@@ -175,18 +158,17 @@ export default function HomeScreen({ tasks = [], setTasks }) {
     return 'Unsorted';
   };
 
-  const renderTaskItem = ({ item, index }) => {
+  const renderTaskItem = ({ item }) => {
     const completedSubtasks = (item.subtasks ?? []).filter((sub) => sub.completed).length;
     const progress = completedSubtasks / item.subtasks.length;
     const percentage = Math.round(progress * 100);
     const isExpanded = expandedTasks[item.id] !== undefined ? expandedTasks[item.id] : viewMode === 'detailed';
-    const isSelected = !!selectedTasks[item.id]; // ✅ Check if task is selected
+    const isSelected = !!selectedTasks[item.id];
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => {
           if (selectMode) {
-            // ✅ Toggle selection in Select Mode
             setSelectedTasks((prev) => ({
               ...prev,
               [item.id]: !prev[item.id] ? true : undefined,
@@ -194,22 +176,20 @@ export default function HomeScreen({ tasks = [], setTasks }) {
           } else {
             toggleTaskExpansion(item.id);
           }
-        }} 
+        }}
         activeOpacity={0.7}
         style={[
           styles.taskCard,
-          item.completed && styles.completedTask, // Apply green highlight for completed tasks
-          selectMode && selectedTasks[item.id] && styles.selectedTask, // Highlight if selected in Select Mode
-        ]} // ✅ Apply selected style
+          item.completed && styles.completedTask,
+          selectMode && selectedTasks[item.id] && styles.selectedTask,
+        ]}
       >
-        {/* ✅ Checkbox for Select Mode */}
         {selectMode && (
           <View style={styles.checkboxContainer}>
             <Ionicons name={isSelected ? "checkbox-outline" : "square-outline"} size={20} color="black" />
           </View>
         )}
 
-        {/* Edit Button at Top-Right */}
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => {
@@ -227,7 +207,6 @@ export default function HomeScreen({ tasks = [], setTasks }) {
           <Ionicons name="create-outline" size={20} color="black" />
         </TouchableOpacity>
 
-        {/* Task Title */}
         <Text style={styles.taskTitle}>{item.title}</Text>
 
         {isExpanded && (
@@ -237,16 +216,13 @@ export default function HomeScreen({ tasks = [], setTasks }) {
             </Text>
             <Text style={styles.details}>Priority: {item.priority}</Text>
             <Text style={styles.details}>Category: {item.category}</Text>
-
             {item.completed ? <Text style={styles.completedLabel}>✔ Completed</Text> : null}
 
-            {/* ✅ Progress Bar */}
             <View style={styles.progressContainer}>
               <Progress.Bar progress={progress} width={200} />
               <Text style={styles.percentage}>{percentage}%</Text>
             </View>
 
-            {/* ✅ Subtasks */}
             {item.subtasks.map((sub, subIndex) => (
               <TouchableOpacity
                 key={subIndex}
@@ -267,39 +243,30 @@ export default function HomeScreen({ tasks = [], setTasks }) {
         )}
       </TouchableOpacity>
     );
-};
-
-  
+  };
 
   return (
     <View style={styles.container}>
-      {/* Header Section */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
           {getFilterLabel()} | {getSortLabel()} | {filterCategory ? filterCategory : 'All Categories'}
         </Text>
         <View style={styles.headerButtons}>
-
-          {/* ✅ Toggle Select Mode */}
           <TouchableOpacity onPress={() => setSelectMode(!selectMode)}>
             <Ionicons name={selectMode ? "close-circle" : "checkbox"} size={18} color="black" />
           </TouchableOpacity>
-
           <TouchableOpacity onPress={handleViewModeChange}>
             <Ionicons name={viewMode === 'detailed' ? 'list' : 'eye'} size={18} color="black" />
           </TouchableOpacity>
-
           <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
             <Ionicons name="filter" size={18} color="black" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Sort & Filter Menu */}
       {menuVisible && (
         <View style={styles.menuContainer}>
           <Text style={styles.menuLabel}>Sort By:</Text>
-          {/* Sort By Picker */}
           <Picker
             selectedValue={sortOption}
             onValueChange={(value) => {
@@ -316,55 +283,52 @@ export default function HomeScreen({ tasks = [], setTasks }) {
             <Picker.Item label="Progress" value="progress" />
           </Picker>
 
-            {/* Filter By Category Picker */}
-            <Picker
-              selectedValue={filterCategory}
-              onValueChange={(value) => {
-                setFilterCategory(value);
-                savePreferences('filterCategory', value);
-                setMenuVisible(false);
-              }}
-              style={styles.picker}
-            >
-              <Picker.Item label="All Categories" value="" />
-              {categories.map((cat, index) => (
-                <Picker.Item key={index} label={cat} value={cat} />
-              ))}
-            </Picker>
+          <Picker
+            selectedValue={filterCategory}
+            onValueChange={(value) => {
+              setFilterCategory(value);
+              savePreferences('filterCategory', value);
+              setMenuVisible(false);
+            }}
+            style={styles.picker}
+          >
+            <Picker.Item label="All Categories" value="" />
+            {categories.map((cat, index) => (
+              <Picker.Item key={index} label={cat} value={cat} />
+            ))}
+          </Picker>
 
-            {/* Filter by Completion Picker */}
-            <Picker
-              selectedValue={taskFilter}
-              onValueChange={(value) => {
-                setTaskFilter(value);
-                savePreferences('taskFilter', value);
-              }}
-              style={styles.picker}
-            >
-              <Picker.Item label="Show All" value="all" />
-              <Picker.Item label="Completed" value="completed" />
-              <Picker.Item label="Incomplete" value="incomplete" />
-            </Picker>
-
+          <Picker
+            selectedValue={taskFilter}
+            onValueChange={(value) => {
+              setTaskFilter(value);
+              savePreferences('taskFilter', value);
+            }}
+            style={styles.picker}
+          >
+            <Picker.Item label="Show All" value="all" />
+            <Picker.Item label="Completed" value="completed" />
+            <Picker.Item label="Incomplete" value="incomplete" />
+          </Picker>
         </View>
       )}
 
-      {/* ✅ Add Action Buttons for Selected Tasks */}
       {selectMode && (
         <View style={styles.selectActions}>
+          <TouchableOpacity onPress={selectAllTasks} style={styles.actionButton}>
+            <Text style={styles.actionText}>
+              {Object.keys(selectedTasks).length === tasks.length ? 'Clear All' : 'Select All'}
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={markSelectedAsComplete} style={styles.actionButton}>
             <Text style={styles.actionText}>✔ Mark Complete</Text>
           </TouchableOpacity>
-
           <TouchableOpacity onPress={deleteSelectedTasks} style={styles.actionButton}>
             <Text style={styles.actionText}>🗑 Delete</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      
-
-      {/* Task List or Sections */}
       <FlatList
         data={[
           { title: 'Due Today', data: tasksDueToday },
@@ -382,9 +346,9 @@ export default function HomeScreen({ tasks = [], setTasks }) {
               ListEmptyComponent={<Text style={styles.emptyMessage}>No tasks in this category.</Text>}
             />
           </>
-          )}
+        )}
+        contentContainerStyle={{ paddingBottom: 100 }}
       />
-
     </View>
   );
 }
@@ -397,20 +361,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    paddingBottom: 4,
-    color: '#007BFF',
-  },
+  headerTitle: { fontSize: 16, fontWeight: 'bold' },
+  headerButtons: { flexDirection: 'row', gap: 12 },
   menuContainer: {
     padding: 8,
     backgroundColor: '#fff',
@@ -419,13 +371,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 16,
   },
+  menuLabel: { fontSize: 16, fontWeight: 'bold' },
   taskCard: {
     backgroundColor: '#fff',
     padding: 16,
     marginBottom: 16,
     borderRadius: 8,
     elevation: 2,
-    position: 'relative', // Required for positioning the edit button
+    position: 'relative',
   },
   completedTask: {
     backgroundColor: '#d4edda',
@@ -458,33 +411,45 @@ const styles = StyleSheet.create({
     backgroundColor: '#d4edda',
     borderColor: '#c3e6cb',
   },
-  subtaskText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  emptyMessage: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
+  subtaskText: { fontSize: 16, color: '#333' },
+  emptyMessage: { fontSize: 14, color: '#999', textAlign: 'center', marginBottom: 10 },
   editButton: {
-    position: 'absolute', // Place the button in the top-right corner
+    position: 'absolute',
     top: 8,
     right: 8,
-    zIndex: 1, // Ensure the button appears above other elements
+    zIndex: 1,
   },
-  selectedTask: {
-    backgroundColor: "lightgrey", // ✅ Light green for selected tasks
+  selectedTask: { backgroundColor: 'lightgrey' },
+  checkboxContainer: { marginRight: 10 },
+  taskRow: { flexDirection: 'row', alignItems: 'center' },
+  taskContent: { flex: 1 },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    paddingBottom: 4,
+    color: '#007BFF',
   },
-  taskRow: {
-    flexDirection: "row", // Align checkbox and task content horizontally
-    alignItems: "center", // Center vertically
+  selectActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
   },
-  checkboxContainer: {
-    marginRight: 10, // Add spacing between checkbox and task content
+  actionButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#007BFF',
+    borderColor: '#007BFF',
+    borderWidth: 1,
+    borderRadius: 8,
   },
-  taskContent: {
-    flex: 1, // Ensure task content takes up the remaining space
+  actionText: { 
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
