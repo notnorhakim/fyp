@@ -48,11 +48,12 @@ export default function App() {
         />
         <Tab.Screen
           name="Calendar"
-          component={CalendarScreen}
+          children={() => <CalendarScreen tasks={tasks} />}
           options={{
             tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} />,
           }}
         />
+
         <Tab.Screen
           name="AddTask"
           children={(props) => <AddTaskScreen {...props} addTask={addTask} categories={Array.from(new Set(tasks.map((task) => task.category)))} />}
