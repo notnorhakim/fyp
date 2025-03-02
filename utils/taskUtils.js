@@ -37,12 +37,6 @@ export const toggleSubtask = (tasks, setTasks, setExpandedTasks, taskId, subtask
   });
 };
 
-
-
-
-
-  
-  
   export const sortTasks = (tasks, setTasks, option) => {
     let sortedTasks = [...tasks];
   

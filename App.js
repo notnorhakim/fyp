@@ -63,7 +63,7 @@ export default function App() {
         />
         <Tab.Screen
           name="Search"
-          component={SearchScreen}
+          children={() => <SearchScreen tasks={tasks} />}
           options={{
             tabBarIcon: ({ color, size }) => <Ionicons name="search" size={size} color={color} />,
           }}

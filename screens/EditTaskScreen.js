@@ -7,8 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
-export default function EditTaskScreen({ navigation, route, deleteTask }) {
-  const { taskToEdit, updateTask, categories } = route.params || {};
+export default function EditTaskScreen({ navigation, route, deleteTask, updateTask }) {
+  const { taskToEdit, categories } = route.params || {};
 
   if (!taskToEdit) {
     alert('Error: No task found to edit.');

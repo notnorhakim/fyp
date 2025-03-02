@@ -1,10 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import moment from 'moment';
+import { useNavigation, useRoute } from '@react-navigation/native';
+
 
 export default function CalendarScreen({ tasks = [] }) {
   const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
+  const route = useRoute();
+  const navigation = useNavigation();
 
   // Compute marked dates using local conversion for accuracy
   const markedDates = useMemo(() => {
@@ -37,14 +41,22 @@ export default function CalendarScreen({ tasks = [] }) {
     const completeness = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
     
     return (
-      <View style={[
+      <TouchableOpacity 
+      style={[
         styles.taskCard, 
-        item.completed 
+        (completeness === 100)
           ? styles.completedTask 
-          : (completeness > 0 && completeness < 100) 
+          : (completeness > 0 && completeness < 100)
             ? styles.partialTask 
             : null
-      ]}>
+      ]}
+      onPress={() => {
+        navigation.navigate('Edit Task', {
+          taskToEdit: item,
+          categories: Array.from(new Set(tasks.map((task) => task.category))),
+        });
+      }}
+      >
         <Text style={styles.taskTitle}>{item.title}</Text>
         <Text style={styles.taskDetails}>Priority: {item.priority}</Text>
         <Text style={styles.taskDetails}>Progress: {completeness}%</Text>
@@ -59,7 +71,7 @@ export default function CalendarScreen({ tasks = [] }) {
           </View>
         )}
         
-      </View>
+      </TouchableOpacity>
     );
   };
 
