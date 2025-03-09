@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Button, Linking } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
@@ -6,8 +6,10 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { ThemeContext } from './ThemeContext';
 
 export default function EditTaskScreen({ navigation, route, deleteTask, updateTask }) {
+  const { theme, themeStyles } = useContext(ThemeContext);
   const { taskToEdit, categories } = route.params || {};
 
   if (!taskToEdit) {
@@ -27,7 +29,6 @@ export default function EditTaskScreen({ navigation, route, deleteTask, updateTa
 
   const attachFile = async () => {
     let result = await DocumentPicker.getDocumentAsync({});
-    console.log("File picker result:", result);
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setAttachedFiles(prevFiles => [...prevFiles, result.assets[0]]);
     }
@@ -86,18 +87,23 @@ export default function EditTaskScreen({ navigation, route, deleteTask, updateTa
   };
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
-    >
-      <Text style={styles.label}>Edit Task</Text>
+    <ScrollView style={[styles.container, 
+    { backgroundColor: themeStyles.backgroundColor }]} 
+    contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}>
+      
+      <Text style={[styles.label, { color: themeStyles.textColor }]}>Edit Task</Text>
+      <Text style={[styles.label, { color: themeStyles.textColor }]}>Task Title</Text>
+      <TextInput 
+        style={[styles.input, { borderColor: themeStyles.textColor, color: themeStyles.textColor }]} 
+        value={title} 
+        onChangeText={setTitle} 
+      />
 
-      <Text style={styles.label}>Task Title</Text>
-      <TextInput style={styles.input} value={title} onChangeText={setTitle} />
-
-      <Text style={styles.label}>Due Date</Text>
+      <Text style={[styles.label, { color: themeStyles.textColor }]}>Due Date</Text>
       <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-        <Text style={styles.dateText}>{dueDate.toDateString()}</Text>
+        <Text style={[styles.dateText, { color: themeStyles.textColor, backgroundColor: themeStyles.subtaskBackground }]}>
+          {dueDate.toDateString()}
+        </Text>
       </TouchableOpacity>
       {showDatePicker && (
         <DateTimePicker
@@ -111,28 +117,42 @@ export default function EditTaskScreen({ navigation, route, deleteTask, updateTa
         />
       )}
 
-      <Text style={styles.label}>Priority</Text>
-      <Picker selectedValue={priority} onValueChange={setPriority} style={styles.picker}>
+      <Text style={[styles.label, { color: themeStyles.textColor }]}>Priority</Text>
+      <Picker 
+        selectedValue={priority} 
+        onValueChange={setPriority} 
+        style={[styles.picker, { color: themeStyles.textColor }]}
+        itemStyle={{ color: themeStyles.textColor }}
+      >
         <Picker.Item label="High" value="High" />
         <Picker.Item label="Medium" value="Medium" />
         <Picker.Item label="Low" value="Low" />
       </Picker>
 
-      <Text style={styles.label}>Category</Text>
-      <Picker selectedValue={category} onValueChange={setCategory} style={styles.picker}>
+      <Text style={[styles.label, { color: themeStyles.textColor }]}>Category</Text>
+      <Picker 
+        selectedValue={category} 
+        onValueChange={setCategory} 
+        style={[styles.picker, { color: themeStyles.textColor }]}
+        itemStyle={{ color: themeStyles.textColor }}
+      >
         {categories.map((cat, index) => (
           <Picker.Item key={index} label={cat} value={cat} />
         ))}
       </Picker>
 
-      <Text style={styles.label}>Subtasks</Text>
+      <Text style={[styles.label, { color: themeStyles.textColor }]}>Subtasks</Text>
       {subtasks.map((subtask, index) => (
         <View key={index} style={styles.subtaskRow}>
           <TouchableOpacity
-            style={[styles.subtask, subtask.completed ? styles.completedSubtask : null, { flex: 1 }]}
+            style={[
+              styles.subtask,
+              subtask.completed ? styles.completedSubtask : null,
+              { flex: 1 }
+            ]}
             onPress={() => handleToggleSubtask(index)}
           >
-            <Text>{subtask.name}</Text>
+            <Text style={{ color: themeStyles.textColor }}>{subtask.name}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => deleteSubtask(index)} style={styles.deleteIconContainer}>
             <Ionicons name="trash-outline" size={24} color="red" />
@@ -141,8 +161,9 @@ export default function EditTaskScreen({ navigation, route, deleteTask, updateTa
       ))}
       <View style={styles.subtaskInputContainer}>
         <TextInput
-          style={styles.subtaskInput}
+          style={[styles.subtaskInput, { borderColor: themeStyles.textColor, color: themeStyles.textColor }]}
           placeholder="Add new subtask"
+          placeholderTextColor={theme === 'dark' ? '#ccc' : '#888'}
           value={newSubtask}
           onChangeText={setNewSubtask}
         />
@@ -151,7 +172,7 @@ export default function EditTaskScreen({ navigation, route, deleteTask, updateTa
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.label}>Attachments</Text>
+      <Text style={[styles.label, { color: themeStyles.textColor }]}>Attachments</Text>
       <View style={styles.attachmentsContainer}>
         <Button title="Attach File" onPress={attachFile} />
         {attachedFiles.length ? (
@@ -173,8 +194,8 @@ export default function EditTaskScreen({ navigation, route, deleteTask, updateTa
                   }
                 }}
               >
-                <Ionicons name="document-text-outline" size={24} color="black" style={styles.attachmentIcon} />
-                <Text style={styles.attachmentTitle} numberOfLines={1}>
+                <Ionicons name="document-text-outline" size={24} color={themeStyles.textColor} style={styles.attachmentIcon} />
+                <Text style={[styles.attachmentTitle, { color: themeStyles.textColor }]} numberOfLines={1}>
                   {file.name}
                 </Text>
               </TouchableOpacity>
@@ -184,7 +205,7 @@ export default function EditTaskScreen({ navigation, route, deleteTask, updateTa
             </View>
           ))
         ) : (
-          <Text style={styles.noAttachment}>No files attached</Text>
+          <Text style={[styles.noAttachment, { color: themeStyles.textColor }]}>No files attached</Text>
         )}
       </View>
 
@@ -200,20 +221,19 @@ export default function EditTaskScreen({ navigation, route, deleteTask, updateTa
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
+  toggleContainer: { alignItems: 'flex-end', marginBottom: 8 },
   label: { fontSize: 16, fontWeight: 'bold', marginTop: 16 },
   input: {
     borderWidth: 1,
     padding: 8,
     marginVertical: 8,
     borderRadius: 8,
-    borderColor: '#ccc',
   },
   dateText: {
     fontSize: 16,
     padding: 8,
     backgroundColor: '#f9f9f9',
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 8,
   },
   picker: { height: 50, width: '100%' },
@@ -225,7 +245,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderWidth: 1,
     borderRadius: 8,
-    borderColor: '#ccc',
   },
   subtask: {
     padding: 8,
@@ -244,7 +263,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 8,
     borderRadius: 8,
-    borderColor: '#ccc',
   },
   addSubtaskButton: {
     marginLeft: 8,
@@ -274,7 +292,6 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     padding: 8,
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 8,
     width: '100%',
   },
@@ -296,7 +313,6 @@ const styles = StyleSheet.create({
   },
   noAttachment: {
     fontSize: 14,
-    color: 'gray',
     marginTop: 4,
   },
 });

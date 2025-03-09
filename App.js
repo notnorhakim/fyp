@@ -4,6 +4,7 @@ import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { ThemeProvider } from './screens/ThemeContext'; 
 
 // Import Screens
 import HomeScreen from './screens/HomeScreen';
@@ -11,7 +12,7 @@ import CalendarScreen from './screens/CalendarScreen';
 import SearchScreen from './screens/SearchScreen';
 import TimerScreen from './screens/TimerScreen';
 import AddTaskScreen from './screens/AddTaskScreen';
-import EditTaskScreen from './screens/EditTaskScreen'; // ✅ Import Edit Screen
+import EditTaskScreen from './screens/EditTaskScreen'; 
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -26,7 +27,7 @@ export default function App() {
   function updateTask(updatedTask) {
     setTasks((prevTasks) =>
       prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
-    ); // ✅ Update the edited task
+    ); 
   }
 
   function deleteTask(taskId) {
@@ -80,29 +81,31 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen name="Main" component={BottomTabs} options={{ headerShown: false }} />
-        <Stack.Screen name="AddTask">
-          {(props) => <AddTaskScreen {...props} addTask={addTask} />}
-        </Stack.Screen>
-        <Stack.Screen name="Edit Task">
-         {(props) => <EditTaskScreen {...props} updateTask={updateTask} deleteTask={deleteTask} />}
-        </Stack.Screen>
+    <ThemeProvider>
+      <NavigationContainer>
+        <Stack.Navigator>
+          <Stack.Screen name="Main" component={BottomTabs} options={{ headerShown: false }} />
+          <Stack.Screen name="AddTask">
+            {(props) => <AddTaskScreen {...props} addTask={addTask} />}
+          </Stack.Screen>
+          <Stack.Screen name="Edit Task">
+          {(props) => <EditTaskScreen {...props} updateTask={updateTask} deleteTask={deleteTask} />}
+          </Stack.Screen>
 
-      </Stack.Navigator>
-    </NavigationContainer>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ThemeProvider>
   );
 }
 
-// Custom Floating Add Task Button
+
 function CustomAddTaskButton() {
-  const navigation = useNavigation(); // ✅ Ensure navigation is available
+  const navigation = useNavigation(); 
 
   return (
     <TouchableOpacity
       style={styles.addButton}
-      onPress={() => navigation.navigate('AddTask')} // ✅ Navigate correctly
+      onPress={() => navigation.navigate('AddTask')} 
     >
       <Ionicons name="add" size={32} color="white" />
     </TouchableOpacity>

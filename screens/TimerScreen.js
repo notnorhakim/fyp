@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, 
   Text, 
@@ -9,33 +9,56 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle, Line, Text as SvgText } from 'react-native-svg';
 import { Audio } from 'expo-av';
+import { useNavigation } from '@react-navigation/native';
+import { ThemeContext } from './ThemeContext';
 
 const PomodoroTimer = () => {
+  const { theme, themeStyles } = useContext(ThemeContext);
+  const navigation = useNavigation();
+
+ 
+  useEffect(() => {
+    navigation.setOptions({
+      headerStyle: {
+        backgroundColor: themeStyles.backgroundColor,
+        ...(theme === 'dark'
+          ? {
+              shadowColor: '#fff',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.8,
+              shadowRadius: 4,
+              elevation: 4,
+            }
+          : {}),
+      },
+      headerTitleStyle: { color: themeStyles.textColor },
+      headerTintColor: themeStyles.textColor,
+    });
+  }, [navigation, themeStyles, theme]);
+
   const timerSettings = {
     pomodoro: 25 * 60,
     shortBreak: 5 * 60,
     longBreak: 15 * 60,
   };
 
-  const [timerType, setTimerType] = useState('pomodoro'); 
+  const [timerType, setTimerType] = useState('pomodoro');
   const [timeLeft, setTimeLeft] = useState(timerSettings[timerType]);
   const [isRunning, setIsRunning] = useState(false);
   const [customTimeInput, setCustomTimeInput] = useState('25');
   const [customTime, setCustomTime] = useState(25 * 60);
 
-  // effectiveTime will be the timer duration based on the timer type
+  // effectiveTime is based on timerType
   const effectiveTime = timerType === 'custom' ? customTime : timerSettings[timerType];
 
   useEffect(() => {
-    // When timer type changes, reset the timer.
     setTimeLeft(effectiveTime);
   }, [timerType, customTime]);
 
-  // Helper to play beep sound when timer ends
   const playSound = async () => {
     try {
       const { sound } = await Audio.Sound.createAsync(
-        require('../assets/beep.wav'), 
+        require('../assets/beep.wav'),
         { shouldPlay: true }
       );
       setTimeout(() => {
@@ -45,7 +68,6 @@ const PomodoroTimer = () => {
       console.error('Error playing sound:', error);
     }
   };
-  
 
   useEffect(() => {
     let interval = null;
@@ -61,14 +83,8 @@ const PomodoroTimer = () => {
     return () => clearInterval(interval);
   }, [isRunning, timeLeft]);
 
-  const startTimer = () => {
-    setIsRunning(true);
-  };
-
-  const pauseTimer = () => {
-    setIsRunning(false);
-  };
-
+  const startTimer = () => setIsRunning(true);
+  const pauseTimer = () => setIsRunning(false);
   const resetTimer = () => {
     setIsRunning(false);
     setTimeLeft(effectiveTime);
@@ -95,17 +111,20 @@ const PomodoroTimer = () => {
     }
   };
 
-  // Calculate minutes and seconds for display
+  // Display calculations
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
-
-  // Calculate percentage of time remaining
   const percentage = timeLeft / effectiveTime;
-
-  // Calculate pointer angle (hand rotates clockwise)
   const pointerAngle = (1 - percentage) * 360;
 
-  // Generate the SVG path for the red pie slice representing remaining time.
+  const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+    const angleInRadians = (angleInDegrees * Math.PI) / 180.0;
+    return {
+      x: centerX + radius * Math.cos(angleInRadians),
+      y: centerY + radius * Math.sin(angleInRadians),
+    };
+  };
+
   const generatePieSlice = () => {
     const centerX = 150;
     const centerY = 150;
@@ -122,54 +141,67 @@ const PomodoroTimer = () => {
     return `M ${centerX} ${centerY} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y} Z`;
   };
 
-  // Convert polar coordinates to Cartesian coordinates
-  const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-    const angleInRadians = (angleInDegrees * Math.PI) / 180.0;
-    return {
-      x: centerX + radius * Math.cos(angleInRadians),
-      y: centerY + radius * Math.sin(angleInRadians),
-    };
-  };
-
   return (
-    <View style={styles.container}>
-      {/* Timer Type Buttons */}
+    <View style={[styles.container, { backgroundColor: themeStyles.backgroundColor }]}>
       <View style={styles.timerTypeContainer}>
-        <TouchableOpacity 
-          style={[styles.timerTypeButton, timerType === 'pomodoro' && styles.activeTimerType]}
+        <TouchableOpacity
+          style={[
+            styles.timerTypeButton,
+            { backgroundColor: theme === 'light' ? '#E5E7EB' : '#555' },
+            timerType === 'pomodoro' && styles.activeTimerType
+          ]}
           onPress={() => changeTimerType('pomodoro')}
         >
-          <Text style={styles.timerTypeText}>Pomodoro</Text>
+          <Text style={[styles.timerTypeText, { color: themeStyles.textColor }]}>Pomodoro</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.timerTypeButton, timerType === 'shortBreak' && styles.activeTimerType]}
+        <TouchableOpacity
+          style={[
+            styles.timerTypeButton,
+            { backgroundColor: theme === 'light' ? '#E5E7EB' : '#555' },
+            timerType === 'shortBreak' && styles.activeTimerType
+          ]}
           onPress={() => changeTimerType('shortBreak')}
         >
-          <Text style={styles.timerTypeText}>Short Break</Text>
+          <Text style={[styles.timerTypeText, { color: themeStyles.textColor }]}>Short Break</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.timerTypeButton, timerType === 'longBreak' && styles.activeTimerType]}
+        <TouchableOpacity
+          style={[
+            styles.timerTypeButton,
+            { backgroundColor: theme === 'light' ? '#E5E7EB' : '#555' },
+            timerType === 'longBreak' && styles.activeTimerType
+          ]}
           onPress={() => changeTimerType('longBreak')}
         >
-          <Text style={styles.timerTypeText}>Long Break</Text>
+          <Text style={[styles.timerTypeText, { color: themeStyles.textColor }]}>Long Break</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.timerTypeButton, timerType === 'custom' && styles.activeTimerType]}
+        <TouchableOpacity
+          style={[
+            styles.timerTypeButton,
+            { backgroundColor: theme === 'light' ? '#E5E7EB' : '#555' },
+            timerType === 'custom' && styles.activeTimerType
+          ]}
           onPress={() => changeTimerType('custom')}
         >
-          <Text style={styles.timerTypeText}>Custom</Text>
+          <Text style={[styles.timerTypeText, { color: themeStyles.textColor }]}>Custom</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Custom Time Input */}
       {timerType === 'custom' && (
         <View style={styles.customTimeContainer}>
-          <TextInput 
-            style={styles.customTimeInput}
+          <TextInput
+            style={[
+              styles.customTimeInput,
+              {
+                backgroundColor: theme === 'light' ? '#fff' : '#444',
+                borderColor: theme === 'light' ? '#ccc' : '#aaa',
+                color: themeStyles.textColor,
+              }
+            ]}
             value={customTimeInput}
             keyboardType="numeric"
             onChangeText={setCustomTimeInput}
             placeholder="Minutes"
+            placeholderTextColor={theme === 'light' ? '#888' : '#ccc'}
           />
           <TouchableOpacity style={styles.setButton} onPress={setCustomTimer}>
             <Text style={styles.setButtonText}>Set</Text>
@@ -177,12 +209,9 @@ const PomodoroTimer = () => {
         </View>
       )}
 
-      {/* Timer Display */}
       <View style={styles.timerDisplay}>
         <Svg width={300} height={300} viewBox="0 0 300 300">
-          {/* Red Pie Slice */}
           <Path d={generatePieSlice()} fill="#ff3b30" />
-          {/* Major Clock Ticks (every 5 minutes) */}
           {[...Array(12)].map((_, index) => {
             const angle = (index * 30) * (Math.PI / 180);
             const x1 = 150 + 115 * Math.sin(angle);
@@ -190,18 +219,17 @@ const PomodoroTimer = () => {
             const x2 = 150 + 130 * Math.sin(angle);
             const y2 = 150 - 130 * Math.cos(angle);
             return (
-              <Line 
-                key={`major-${index}`} 
-                x1={x1} 
-                y1={y1} 
-                x2={x2} 
-                y2={y2} 
-                stroke="black" 
+              <Line
+                key={`major-${index}`}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke={themeStyles.textColor}
                 strokeWidth="3"
               />
             );
           })}
-          {/* Minor Clock Ticks */}
           {[...Array(60)].map((_, index) => {
             if (index % 5 !== 0) {
               const angle = (index * 6) * (Math.PI / 180);
@@ -210,20 +238,19 @@ const PomodoroTimer = () => {
               const x2 = 150 + 130 * Math.sin(angle);
               const y2 = 150 - 130 * Math.cos(angle);
               return (
-                <Line 
-                  key={`minor-${index}`} 
-                  x1={x1} 
-                  y1={y1} 
-                  x2={x2} 
-                  y2={y2} 
-                  stroke="black" 
+                <Line
+                  key={`minor-${index}`}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={themeStyles.textColor}
                   strokeWidth="1"
                 />
               );
             }
             return null;
           })}
-          {/* Minute Labels */}
           {[...Array(12)].map((_, index) => {
             const minuteValue = index * 5;
             const angle = (index * 30 - 90) * (Math.PI / 180);
@@ -234,7 +261,7 @@ const PomodoroTimer = () => {
                 key={`label-${index}`}
                 x={x}
                 y={y}
-                fill="black"
+                fill={themeStyles.textColor}
                 fontSize="16"
                 fontWeight="bold"
                 textAnchor="middle"
@@ -243,22 +270,20 @@ const PomodoroTimer = () => {
               </SvgText>
             );
           })}
-          {/* Clock Hand */}
-          <Line 
-            x1="150" 
-            y1="150" 
-            x2="150" 
-            y2="40" 
-            stroke="black" 
-            strokeWidth="4" 
+          <Line
+            x1="150"
+            y1="150"
+            x2="150"
+            y2="40"
+            stroke={themeStyles.textColor}
+            strokeWidth="4"
             transform={`rotate(${-pointerAngle} 150 150)`}
           />
-          <Circle cx="150" cy="150" r="10" fill="black" />
-          {/* Digital Time Display */}
+          <Circle cx="150" cy="150" r="10" fill={themeStyles.textColor} />
           <SvgText
             x="42%"
             y="200"
-            fill="black"
+            fill={themeStyles.textColor}
             fontSize="20"
             fontWeight="bold"
           >
@@ -267,7 +292,6 @@ const PomodoroTimer = () => {
         </Svg>
       </View>
 
-      {/* Control Buttons */}
       <View style={styles.buttonContainer}>
         {!isRunning ? (
           <TouchableOpacity style={[styles.controlButton, styles.startButton]} onPress={startTimer}>
@@ -291,7 +315,6 @@ export default PomodoroTimer;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -303,14 +326,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#E5E7EB',
     borderRadius: 5,
   },
   activeTimerType: {
     backgroundColor: '#EF4444',
   },
   timerTypeText: {
-    color: '#000',
     fontWeight: 'bold',
   },
   customTimeContainer: {
@@ -322,11 +343,9 @@ const styles = StyleSheet.create({
     width: 60,
     height: 40,
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 5,
     textAlign: 'center',
     marginRight: 10,
-    backgroundColor: '#fff',
   },
   setButton: {
     paddingVertical: 8,
@@ -343,9 +362,7 @@ const styles = StyleSheet.create({
     height: 300,
     marginBottom: 20,
     borderWidth: 4,
-    borderColor: '#1F2937',
     borderRadius: 10,
-    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
