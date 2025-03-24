@@ -260,7 +260,7 @@ export default function HomeScreen({ tasks = [], setTasks }) {
         ]}
       >
         {selectMode && (
-          <View style={styles.checkboxContainer}>
+          <View style={styles.checkboxContainer} testID={`task-checkbox-${item.id}`}>
             <Ionicons
               name={isSelected ? 'checkbox-outline' : 'square-outline'}
               size={20}
@@ -362,9 +362,17 @@ export default function HomeScreen({ tasks = [], setTasks }) {
           {getFilterLabel()} | {getSortLabel()} | {filterCategory ? filterCategory : 'All Categories'}
         </Text>
         <View style={styles.headerButtons}>
-          <TouchableOpacity onPress={() => setSelectMode(!selectMode)}>
-            <Ionicons name={selectMode ? 'close-circle' : 'checkbox'} size={18} color={themeStyles.textColor} />
+        <TouchableOpacity
+            onPress={() => setSelectMode(!selectMode)}
+            testID="select-toggle"
+          >
+            <Ionicons
+              name={selectMode ? 'close-circle' : 'checkbox'}
+              size={18}
+              color={themeStyles.textColor}
+            />
           </TouchableOpacity>
+
           <TouchableOpacity onPress={handleViewModeChange}>
             <Ionicons name={viewMode === 'detailed' ? 'list' : 'eye'} size={18} color={themeStyles.textColor} />
           </TouchableOpacity>

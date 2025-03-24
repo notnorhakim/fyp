@@ -124,9 +124,9 @@ export default function EditTaskScreen({ navigation, route, deleteTask, updateTa
         style={[styles.picker, { color: themeStyles.textColor }]}
         itemStyle={{ color: themeStyles.textColor }}
       >
-        <Picker.Item label="High" value="High" />
-        <Picker.Item label="Medium" value="Medium" />
-        <Picker.Item label="Low" value="Low" />
+        <Picker.Item label="High Tide" value="High" />
+        <Picker.Item label="Medium Tide" value="Medium" />
+        <Picker.Item label="Low Tide" value="Low" />
       </Picker>
 
       <Text style={[styles.label, { color: themeStyles.textColor }]}>Category</Text>
